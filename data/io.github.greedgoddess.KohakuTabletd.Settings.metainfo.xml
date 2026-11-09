@@ -28,6 +28,9 @@
   <url type="bugtracker">https://github.com/greedgoddess/kohaku-tabletd/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.6.2" date="2026-11-09">
+      <description><p>Warns when a Chromebook hinge sensor is frozen and explains how to fix it.</p></description>
+    </release>
     <release version="0.6.1" date="2026-11-09">
       <description><p>Dash to Dock can appear only in tablet mode: it is switched on while folded if it is off.</p></description>
     </release>

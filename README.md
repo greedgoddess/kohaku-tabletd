@@ -80,6 +80,12 @@ sources get `…Error.Blocked`), `Status` and `GetSettings` → `a{sv}`,
 `ModeChanged(s mode, d scale, b manual)`, `SettingsChanged(a{sv})`,
 `CallRecorded(x time_ms, s action, s source, s chain, b blocked)`.
 
+## Troubleshooting
+
+Tablet mode detected only in odd positions on a Chromebook usually means the
+hinge sensor in the keyboard base is stuck; the settings window and a
+notification warn about it. Fix and checks: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
+
 ## Develop
 
 `make check` runs the tests. Code blocks are tagged `# [doc:<id>]`, explained in

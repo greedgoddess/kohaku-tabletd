@@ -96,6 +96,15 @@ class ScalingPage(Page):
         current = Adw.PreferencesGroup(title="Current state")
         self.status_row = Adw.ActionRow(title="Mode", use_markup=False)
         current.add(self.status_row)
+        self.warning_row = Adw.ActionRow(title="Tablet mode detection unreliable",
+                                         use_markup=False, visible=False,
+                                         css_classes=["warning"])
+        self.warning_row.add_prefix(Gtk.Image(icon_name="dialog-warning-symbolic"))
+        fix = Gtk.Button(label="How to fix", valign=Gtk.Align.CENTER, css_classes=["flat"],
+                         tooltip_text=updates.TROUBLESHOOTING_DOC_URL)
+        fix.connect("clicked", lambda _b: self.open_uri(updates.TROUBLESHOOTING_DOC_URL))
+        self.warning_row.add_suffix(fix)
+        current.add(self.warning_row)
         self.add(current)
         self.scale_group = Adw.PreferencesGroup(title="Scale")
         self.add(self.scale_group)
@@ -143,6 +152,9 @@ class ScalingPage(Page):
                     row.set_selected(fmt.nearest_index(supported, settings[key]))
                 else:
                     row.set_value(settings[key] * 100)
+            warning = settings.get("sensor_warning", "")
+            self.warning_row.set_visible(bool(warning))
+            self.warning_row.set_subtitle(warning)
             pending = settings.get("default_pending")
             self.rows["default_scale"][0].set_subtitle(
                 "Waiting for confirmation in GNOME’s dialog…" if pending

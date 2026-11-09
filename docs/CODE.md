@@ -46,6 +46,13 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 |---|---|
 | <a id="d2d-integration"></a>`d2d-integration` | Dash to Dock / Ubuntu Dock: while folded, switches the extension on if it is off and sets `dock-fixed` (always visible, reserves its space). Built in, off until enabled. |
 
+## `src/kohaku_tabletd/sensors.py`
+
+| ID | What it does |
+|---|---|
+| <a id="sns-find"></a>`sns-find` | Finds the Chromebook EC's accelerometers (`cros-ec-accel`) in sysfs and reads their raw x/y/z. |
+| <a id="sns-freeze"></a>`sns-freeze` | Flags a sensor whose reading stays identical for 60 s while another one moves; cleared as soon as it changes. |
+
 ## `src/kohaku_tabletd/monitorsxml.py`
 
 | ID | What it does |
@@ -122,7 +129,8 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="dmn-trigger"></a>`dmn-trigger` | Trigger API: identifies and records the caller, refuses blocklisted sources with `Error.Blocked`, otherwise acts. |
 | <a id="dmn-settings"></a>`dmn-settings` | Settings over D-Bus: default scale (+ pending flag), temporary zoom, supported scales, blocklist, update status. The default goes to GNOME, the rest to the user config; the zoom is reapplied if active. |
 | <a id="dmn-updates"></a>`dmn-updates` | Update checks in a worker thread: on demand, 60 s after start and hourly once the last check is a day old (if enabled); results are saved and broadcast. |
-| <a id="dmn-notify"></a>`dmn-notify` | Desktop notification (app icon, linked to the desktop entry) once per new version; clicking it opens the release page. |
+| <a id="dmn-sensor-check"></a>`dmn-sensor-check` | Every 2 s (if there are two EC accelerometers): checks for a frozen hinge sensor; notifies once and shows the warning in settings until it updates again. |
+| <a id="dmn-notify"></a>`dmn-notify` | Desktop notification under the app's name and icon; clicking it opens a page (release page, troubleshooting doc). |
 | <a id="dmn-run"></a>`dmn-run` | Exports the object, owns the bus name (single instance), handles SIGINT/SIGTERM. |
 
 ## `src/kohaku_tabletd/cli.py`
@@ -140,7 +148,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 |---|---|
 | <a id="ui-client"></a>`ui-client` | D-Bus proxy to the daemon (activation starts it if needed). |
 | <a id="ui-page-base"></a>`ui-page-base` | Base class for a tab: daemon client, error toasts, opening links, signal hook. |
-| <a id="ui-scaling"></a>`ui-scaling` | Scaling tab: current mode, GNOME's default scale (shows when GNOME is waiting for confirmation) and the temporary zoom. |
+| <a id="ui-scaling"></a>`ui-scaling` | Scaling tab: current mode (plus a warning with "How to fix" when a hinge sensor is frozen), GNOME's default scale (shows when GNOME is waiting for confirmation) and the temporary zoom. |
 | <a id="ui-scale-rows"></a>`ui-scale-rows` | Dropdowns of supported scales, or spin rows when none are reported. |
 | <a id="ui-integrations"></a>`ui-integrations` | Integrations tab: a switch per installed integration, grouped by category, with notes when unavailable and a "How to add" link. |
 | <a id="ui-sources"></a>`ui-sources` | Sources tab: recent calls (with a hint and a "How to trigger" link to `docs/TRIGGERS.md`) and the blocklist, updated live from daemon signals. |

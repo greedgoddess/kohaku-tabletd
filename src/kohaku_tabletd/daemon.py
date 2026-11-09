@@ -11,7 +11,7 @@ import time
 from gi.repository import Gio, GLib
 
 from . import (BUS_NAME, HINGE_SOURCE, INTERFACE, OBJECT_PATH, SETTINGS_APP_ID, __version__,
-               callers, config, integration, monitorsxml, mutter, state, switch, updates)
+               callers, config, integration, monitorsxml, mutter, sensors, state, switch, updates)
 
 log = logging.getLogger("kohaku-tabletd")
 TRIGGERS = ("Toggle", "SetMode", "Auto", "Reapply")
@@ -75,7 +75,10 @@ class Daemon:
                        "checked": 0, "error": "", "notified": ""}
         self.update.update(updates.load_state())
         self._update_running = False
-        self._notify_id = 0
+        self._notify_urls = {}  # notification id -> page its click opens
+        self.freeze = sensors.FreezeDetector()
+        self.accelerometers = sensors.accelerometers()
+        self.sensor_warning = ""
         self._display_timer = 0
         self._saved_config_changed = False
         self._xml_monitor = None
@@ -332,6 +335,7 @@ class Daemon:
             "blocklist": GLib.Variant("as", list(self.cfg.blocklist)),
             "supported_scales": GLib.Variant("ad", supported),
             "update_check": GLib.Variant("b", self.cfg.update_check),
+            "sensor_warning": GLib.Variant("s", self.sensor_warning),
             "integrations": GLib.Variant("aa{sv}", [
                 {"id": GLib.Variant("s", row["id"]), "title": GLib.Variant("s", row["title"]),
                  "description": GLib.Variant("s", row["description"]),
@@ -387,7 +391,9 @@ class Daemon:
         self.update.update(result)
         log.info("update check: %s %s", result["state"], result["latest"] or result["error"])
         if result["state"] == "available" and result["latest"] != self.update["notified"]:
-            self.notify_update(result["latest"], result["url"])
+            self.notify(f"kohaku-tabletd {result['latest']} is available",
+                        f"You have {__version__}. Open the release page to get the new RPM.",
+                        "Open release page", result["url"])
             self.update["notified"] = result["latest"]
         try:
             updates.save_state(self.update)
@@ -406,32 +412,51 @@ class Daemon:
         self._periodic_update()
         return GLib.SOURCE_REMOVE
 
+    # [doc:dmn-sensor-check]
+    def _check_sensors(self):
+        """Every 2 s: read the EC accelerometers; warn once when one is frozen."""
+        readings = {label: sensors.read_accel(path) for label, path in self.accelerometers.items()}
+        frozen = self.freeze.update(time.monotonic(), readings)
+        warning = ""
+        if frozen:
+            warning = (f"Hinge sensor {', '.join(sorted(frozen))} stopped updating, so tablet mode "
+                       "is detected wrongly. Shut down, then hold Refresh and press Power.")
+        if warning == self.sensor_warning:
+            return GLib.SOURCE_CONTINUE
+        if warning and not self.sensor_warning:
+            log.warning("frozen accelerometer: %s", ", ".join(sorted(frozen)))
+            self.notify("Tablet mode detection unreliable", warning,
+                        "How to fix", updates.TROUBLESHOOTING_DOC_URL)
+        elif not warning:
+            log.info("accelerometers update again")
+        self.sensor_warning = warning
+        self._emit_settings()
+        return GLib.SOURCE_CONTINUE
+
     # [doc:dmn-notify]
-    def notify_update(self, version, url):
-        """Desktop notification, once per new version; clicking opens the release page."""
-        self._notify_url = url
+    def notify(self, summary, body, button, url):
+        """Desktop notification under the app's name; clicking it opens url."""
         params = GLib.Variant("(susssasa{sv}i)", (
-            "Tablet Mode", 0, SETTINGS_APP_ID,
-            f"kohaku-tabletd {version} is available",
-            f"You have {__version__}. Open the release page to get the new RPM.",
-            ["default", "Open release page", "open", "Open release page"],
+            "Tablet Mode", 0, SETTINGS_APP_ID, summary, body,
+            ["default", button, "open", button],
             {"desktop-entry": GLib.Variant("s", SETTINGS_APP_ID)}, -1))
         self.bus.call(*NOTIFY, "Notify", params, GLib.VariantType("(u)"),
-                      Gio.DBusCallFlags.NONE, -1, None, self._on_notified)
+                      Gio.DBusCallFlags.NONE, -1, None, self._on_notified, url)
 
-    def _on_notified(self, bus, result):
+    def _on_notified(self, bus, result, url):
         try:
-            self._notify_id = bus.call_finish(result).unpack()[0]
+            self._notify_urls[bus.call_finish(result).unpack()[0]] = url
         except GLib.Error as exc:
             log.warning("notification failed: %s", exc.message)
 
     def _on_notify_action(self, _conn, _sender, _path, _iface, _signal, params):
         notification_id, action = params.unpack()
-        if notification_id == self._notify_id and action in ("default", "open"):
+        url = self._notify_urls.get(notification_id)
+        if url and action in ("default", "open"):
             try:
-                Gio.AppInfo.launch_default_for_uri(self._notify_url, None)
+                Gio.AppInfo.launch_default_for_uri(url, None)
             except GLib.Error as exc:
-                log.warning("cannot open %s: %s", self._notify_url, exc.message)
+                log.warning("cannot open %s: %s", url, exc.message)
 
     # [doc:dmn-run]
     def run(self):
@@ -445,6 +470,8 @@ class Daemon:
                                   Gio.DBusSignalFlags.NONE, self._on_notify_action)
         GLib.timeout_add_seconds(60, self._first_update_check)
         GLib.timeout_add_seconds(3600, self._periodic_update)
+        if len(self.accelerometers) >= 2:
+            GLib.timeout_add_seconds(2, self._check_sensors)
         for signum in (signal.SIGINT, signal.SIGTERM):
             GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signum, self._quit)
         self.loop.run()
