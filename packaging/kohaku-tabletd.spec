@@ -38,9 +38,6 @@ scales, recent trigger sources and a caller blocklist.
 %check
 make check
 desktop-file-validate %{buildroot}%{_datadir}/applications/io.github.greedgoddess.KohakuTabletd.Settings.desktop
-%{_metainfodir}/io.github.greedgoddess.KohakuTabletd.Settings.metainfo.xml
-%{_datadir}/icons/hicolor/scalable/apps/io.github.greedgoddess.KohakuTabletd.Settings.svg
-%{_datadir}/icons/hicolor/symbolic/apps/io.github.greedgoddess.KohakuTabletd.Settings-symbolic.svg
 appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/io.github.greedgoddess.KohakuTabletd.Settings.metainfo.xml
 
 # [doc:spec-post]

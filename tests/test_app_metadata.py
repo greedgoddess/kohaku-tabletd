@@ -34,3 +34,20 @@ class AppMetadataTest(unittest.TestCase):
 
     def test_latest_release_is_current_version(self):
         self.assertEqual(self.meta.find("releases/release").get("version"), __version__)
+
+
+class SpecFilesTest(unittest.TestCase):
+    def test_check_section_only_runs_commands(self):
+        spec = (DATA.parent / "packaging" / "kohaku-tabletd.spec").read_text()
+        check = spec.split("%check\n", 1)[1].split("\n\n", 1)[0]
+        for line in check.splitlines():
+            self.assertFalse(line.startswith("%{"), f"stray path in %check: {line}")
+
+    def test_files_lists_app_metadata(self):
+        spec = (DATA.parent / "packaging" / "kohaku-tabletd.spec").read_text()
+        files = spec.split("%files\n", 1)[1].split("\n\n", 1)[0]
+        for suffix in (f"applications/{SETTINGS_APP_ID}.desktop",
+                       f"{SETTINGS_APP_ID}.metainfo.xml",
+                       f"scalable/apps/{SETTINGS_APP_ID}.svg",
+                       f"symbolic/apps/{SETTINGS_APP_ID}-symbolic.svg"):
+            self.assertTrue(any(line.endswith(suffix) for line in files.splitlines()), suffix)
