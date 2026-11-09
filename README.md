@@ -43,6 +43,9 @@ scale = command(/usr/bin/kohaku-tabletd --active-user toggle)
   scale (tablet mode and shortcut), chosen from the scales GNOME offers.
 - **Sources**: the last 50 trigger calls with their source (e.g. `keyd`) and
   process chain, plus a blocklist. Calls from blocked sources are refused.
+- **About**: version, link to this repository, and the update check (daily
+  against GitHub releases, on by default). A new release shows a desktop
+  notification once; clicking it opens the release page.
 
 Further settings get their own tab (`PAGES` in `settings_ui.py`).
 
@@ -50,7 +53,8 @@ Further settings get their own tab (`PAGES` in `settings_ui.py`).
 
 `/etc/kohaku-tabletd/config.toml`, overridden by
 `~/.config/kohaku-tabletd/config.toml`. Keys: `laptop_scale`, `tablet_scale`,
-`debounce_ms`, `output`, `switch_device`, `apply_command`, `blocklist`. The
+`debounce_ms`, `output`, `switch_device`, `apply_command`, `blocklist`,
+`update_check`. The
 settings window writes the user file; for other keys run
 `systemctl --user restart kohaku-tabletd` after editing.
 
@@ -60,7 +64,7 @@ settings window writes the user file; for other keys run
 `/io/github/greedgoddess/KohakuTabletd`: methods `Toggle`, `SetMode(s)`,
 `Auto`, `Reapply` (trigger API, each returns the effective mode; blocked
 sources get `…Error.Blocked`), `Status` and `GetSettings` → `a{sv}`,
-`SetSettings(a{sv})`, `RecentCalls` → `a(xsssb)`; signals
+`SetSettings(a{sv})`, `RecentCalls` → `a(xsssb)`, `CheckForUpdates`; signals
 `ModeChanged(s mode, d scale, b manual)`, `SettingsChanged(a{sv})`,
 `CallRecorded(x time_ms, s action, s source, s chain, b blocked)`.
 

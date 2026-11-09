@@ -5,15 +5,20 @@ import logging
 import shlex
 import signal
 import subprocess
+import threading
 import time
 
 from gi.repository import Gio, GLib
 
-from . import BUS_NAME, HINGE_SOURCE, INTERFACE, OBJECT_PATH, callers, config, mutter, state, switch
+from . import (BUS_NAME, HINGE_SOURCE, INTERFACE, OBJECT_PATH, SETTINGS_APP_ID, __version__,
+               callers, config, mutter, state, switch, updates)
 
 log = logging.getLogger("kohaku-tabletd")
 TRIGGERS = ("Toggle", "SetMode", "Auto", "Reapply")
 RECENT_MAX = 50
+UPDATE_INTERVAL_MS = 23 * 3600 * 1000  # "daily", with slack for the hourly timer
+NOTIFY = ("org.freedesktop.Notifications", "/org/freedesktop/Notifications",
+          "org.freedesktop.Notifications")
 
 # [doc:dmn-iface]
 INTROSPECTION = f"""
@@ -30,6 +35,7 @@ INTROSPECTION = f"""
     <method name="GetSettings"><arg direction="out" type="a{{sv}}" name="settings"/></method>
     <method name="SetSettings"><arg direction="in" type="a{{sv}}" name="changes"/></method>
     <method name="RecentCalls"><arg direction="out" type="a(xsssb)" name="calls"/></method>
+    <method name="CheckForUpdates"/>
     <signal name="ModeChanged">
       <arg type="s" name="mode"/>
       <arg type="d" name="scale"/>
@@ -64,6 +70,11 @@ class Daemon:
         self.recent = collections.deque(maxlen=RECENT_MAX)
         self._debounce_id = 0
         self._missing_logged = False
+        self.update = {"state": "never", "latest": "", "url": updates.RELEASES_URL,
+                       "checked": 0, "error": "", "notified": ""}
+        self.update.update(updates.load_state())
+        self._update_running = False
+        self._notify_id = 0
 
     # [doc:dmn-apply]
     def apply(self):
@@ -188,6 +199,9 @@ class Daemon:
             elif method == "SetSettings":
                 self.set_settings(params.unpack()[0])
                 invocation.return_value(None)
+            elif method == "CheckForUpdates":
+                self.check_updates()
+                invocation.return_value(None)
             elif method == "RecentCalls":
                 invocation.return_value(GLib.Variant("(a(xsssb))", (list(self.recent),)))
             else:
@@ -240,7 +254,16 @@ class Daemon:
             "tablet_scale": GLib.Variant("d", self.cfg.tablet_scale),
             "blocklist": GLib.Variant("as", list(self.cfg.blocklist)),
             "supported_scales": GLib.Variant("ad", supported),
+            "update_check": GLib.Variant("b", self.cfg.update_check),
+            "update_state": GLib.Variant("s", self.update["state"]),
+            "update_latest": GLib.Variant("s", self.update["latest"]),
+            "update_url": GLib.Variant("s", self.update["url"]),
+            "update_checked": GLib.Variant("x", self.update["checked"]),
+            "update_error": GLib.Variant("s", self.update["error"]),
         }
+
+    def _emit_settings(self):
+        self._emit("SettingsChanged", GLib.Variant("(a{sv})", (self.settings(),)))
 
     def set_settings(self, changes):
         """Validate, persist to the user config, adopt, reapply if a scale changed."""
@@ -249,9 +272,73 @@ class Daemon:
         scales_before = (self.cfg.laptop_scale, self.cfg.tablet_scale)
         for key, value in update.items():
             setattr(self.cfg, key, value)
-        self._emit("SettingsChanged", GLib.Variant("(a{sv})", (self.settings(),)))
+        self._emit_settings()
         if (self.cfg.laptop_scale, self.cfg.tablet_scale) != scales_before:
             self._apply_logged()
+        if update.get("update_check"):
+            self._periodic_update()
+
+    # [doc:dmn-updates]
+    def check_updates(self):
+        """Check GitHub releases in a worker thread; the result lands in _update_done."""
+        if self._update_running:
+            return
+        self._update_running = True
+        self.update["state"] = "checking"
+        self._emit_settings()
+        threading.Thread(target=lambda: GLib.idle_add(self._update_done, updates.check()),
+                         daemon=True).start()
+
+    def _update_done(self, result):
+        self._update_running = False
+        self.update.update(result)
+        log.info("update check: %s %s", result["state"], result["latest"] or result["error"])
+        if result["state"] == "available" and result["latest"] != self.update["notified"]:
+            self.notify_update(result["latest"], result["url"])
+            self.update["notified"] = result["latest"]
+        try:
+            updates.save_state(self.update)
+        except OSError as exc:
+            log.warning("cannot save update state: %s", exc)
+        self._emit_settings()
+        return GLib.SOURCE_REMOVE
+
+    def _periodic_update(self):
+        """Hourly tick: check if enabled and the last check is about a day old."""
+        if self.cfg.update_check and time.time() * 1000 - self.update["checked"] > UPDATE_INTERVAL_MS:
+            self.check_updates()
+        return GLib.SOURCE_CONTINUE
+
+    def _first_update_check(self):
+        self._periodic_update()
+        return GLib.SOURCE_REMOVE
+
+    # [doc:dmn-notify]
+    def notify_update(self, version, url):
+        """Desktop notification, once per new version; clicking opens the release page."""
+        self._notify_url = url
+        params = GLib.Variant("(susssasa{sv}i)", (
+            "Tablet Mode", 0, "software-update-available-symbolic",
+            f"kohaku-tabletd {version} is available",
+            f"You have {__version__}. Open the release page to get the new RPM.",
+            ["default", "Open release page", "open", "Open release page"],
+            {"desktop-entry": GLib.Variant("s", SETTINGS_APP_ID)}, -1))
+        self.bus.call(*NOTIFY, "Notify", params, GLib.VariantType("(u)"),
+                      Gio.DBusCallFlags.NONE, -1, None, self._on_notified)
+
+    def _on_notified(self, bus, result):
+        try:
+            self._notify_id = bus.call_finish(result).unpack()[0]
+        except GLib.Error as exc:
+            log.warning("notification failed: %s", exc.message)
+
+    def _on_notify_action(self, _conn, _sender, _path, _iface, _signal, params):
+        notification_id, action = params.unpack()
+        if notification_id == self._notify_id and action in ("default", "open"):
+            try:
+                Gio.AppInfo.launch_default_for_uri(self._notify_url, None)
+            except GLib.Error as exc:
+                log.warning("cannot open %s: %s", self._notify_url, exc.message)
 
     # [doc:dmn-run]
     def run(self):
@@ -260,6 +347,10 @@ class Daemon:
         self.bus.register_object(OBJECT_PATH, node.interfaces[0], self._on_call, None, None)
         Gio.bus_own_name_on_connection(self.bus, BUS_NAME, Gio.BusNameOwnerFlags.DO_NOT_QUEUE,
                                        self._on_acquired, self._on_lost)
+        self.bus.signal_subscribe(None, NOTIFY[2], "ActionInvoked", NOTIFY[1], None,
+                                  Gio.DBusSignalFlags.NONE, self._on_notify_action)
+        GLib.timeout_add_seconds(60, self._first_update_check)
+        GLib.timeout_add_seconds(3600, self._periodic_update)
         for signum in (signal.SIGINT, signal.SIGTERM):
             GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signum, self._quit)
         self.loop.run()

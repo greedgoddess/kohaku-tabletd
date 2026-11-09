@@ -9,9 +9,11 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
-from . import BUS_NAME, HINGE_SOURCE, INTERFACE, OBJECT_PATH, SETTINGS_APP_ID, fmt  # noqa: E402
+from . import (BUS_NAME, HINGE_SOURCE, INTERFACE, OBJECT_PATH, SETTINGS_APP_ID,  # noqa: E402
+               __version__, fmt, updates)
 
 RECENT_MAX = 50
+VARIANT_TYPES = {"blocklist": "as", "update_check": "b"}  # everything else is a scale ("d")
 
 
 # [doc:ui-client]
@@ -36,9 +38,12 @@ class DaemonClient:
         return [tuple(call) for call in self._call("RecentCalls").unpack()[0]]
 
     def update(self, **changes):
-        variants = {key: GLib.Variant("as", list(value)) if key == "blocklist"
-                    else GLib.Variant("d", float(value)) for key, value in changes.items()}
+        variants = {key: GLib.Variant(VARIANT_TYPES.get(key, "d"), value)
+                    for key, value in changes.items()}
         self._call("SetSettings", GLib.Variant("(a{sv})", (variants,)))
+
+    def check_updates(self):
+        self._call("CheckForUpdates")
 
 
 # [doc:ui-page-base]
@@ -232,8 +237,74 @@ class SourcesPage(Page):
             self._render_blocklist()
 
 
+# [doc:ui-about]
+class AboutPage(Page):
+    key, title_text, icon = "about", "About", "help-about-symbolic"
+
+    def __init__(self, client, toast):
+        super().__init__(client, toast)
+        self._updating = False
+        self._release_url = updates.RELEASES_URL
+        project = Adw.PreferencesGroup(title="kohaku-tabletd")
+        project.add(Adw.ActionRow(title="Version", subtitle=__version__, use_markup=False))
+        link = Adw.ActionRow(title="Source code", subtitle=updates.REPO_URL,
+                             activatable=True, use_markup=False)
+        link.add_suffix(Gtk.Image(icon_name="adw-external-link-symbolic"))
+        link.connect("activated", lambda _row: self.open_uri(updates.REPO_URL))
+        project.add(link)
+        self.add(project)
+
+        group = Adw.PreferencesGroup(title="Updates")
+        self.switch = Adw.SwitchRow(
+            title="Check for updates",
+            subtitle="Daily against GitHub releases, with a notification when a new version is out")
+        self.switch.connect("notify::active", self._on_toggle)
+        self.status_row = Adw.ActionRow(title="Status", use_markup=False)
+        self.release_button = Gtk.Button(label="Open release", valign=Gtk.Align.CENTER,
+                                         css_classes=["suggested-action"], visible=False)
+        self.release_button.connect("clicked", lambda _b: self.open_uri(self._release_url))
+        self.check_button = Gtk.Button(label="Check now", valign=Gtk.Align.CENTER)
+        self.check_button.connect("clicked", lambda _b: self.guard(self.client.check_updates))
+        self.status_row.add_suffix(self.release_button)
+        self.status_row.add_suffix(self.check_button)
+        group.add(self.switch)
+        group.add(self.status_row)
+        self.add(group)
+        self.refresh()
+
+    def refresh(self):
+        settings = self.guard(self.client.settings)
+        if settings is not None:
+            self._show(settings)
+
+    def _show(self, settings):
+        self._updating = True
+        try:
+            self.switch.set_active(settings["update_check"])
+        finally:
+            self._updating = False
+        self.status_row.set_subtitle(fmt.update_summary(settings))
+        self._release_url = settings["update_url"] or updates.RELEASES_URL
+        self.release_button.set_visible(settings["update_state"] == "available")
+        self.check_button.set_sensitive(settings["update_state"] != "checking")
+
+    def _on_toggle(self, row, _pspec):
+        if not self._updating:
+            self.guard(self.client.update, update_check=row.get_active())
+
+    def open_uri(self, uri):
+        try:
+            Gio.AppInfo.launch_default_for_uri(uri, None)
+        except GLib.Error as exc:
+            self.toast(exc.message)
+
+    def on_signal(self, name, args):
+        if name == "SettingsChanged":
+            self._show(args[0])
+
+
 # [doc:ui-pages]
-PAGES = (ScalingPage, SourcesPage)  # future settings: add a Page subclass here
+PAGES = (ScalingPage, SourcesPage, AboutPage)  # future settings: add a Page subclass here
 
 
 # [doc:ui-window]

@@ -3,6 +3,8 @@
 import datetime
 import re
 
+from . import __version__
+
 _REMOTE = re.compile(r"^GDBus\.Error:\S+:\s*")
 
 
@@ -24,3 +26,21 @@ def when(time_ms, now=None):
     moment = datetime.datetime.fromtimestamp(time_ms / 1000)
     now = now or datetime.datetime.now()
     return moment.strftime("%H:%M:%S" if moment.date() == now.date() else "%b %d %H:%M")
+
+
+# [doc:fmt-update]
+def update_summary(info, now=None):
+    """One line for the settings window from the daemon's update_* fields."""
+    state, checked = info.get("update_state", "never"), info.get("update_checked", 0)
+    stamp = f" · checked {when(checked, now)}" if checked else ""
+    if state == "checking":
+        return "Checking…"
+    if state == "available":
+        return f"Version {info.get('update_latest')} is available (you have {__version__}){stamp}"
+    if state == "up-to-date":
+        return f"Up to date ({__version__}){stamp}"
+    if state == "no-release":
+        return f"No releases published yet{stamp}"
+    if state == "error":
+        return f"Check failed: {info.get('update_error') or 'unknown error'}{stamp}"
+    return "Not checked yet"

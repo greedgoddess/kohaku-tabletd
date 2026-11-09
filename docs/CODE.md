@@ -13,10 +13,10 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 
 | ID | What it does |
 |---|---|
-| <a id="cfg-defaults"></a>`cfg-defaults` | All settings and their defaults (200 % default scale, 266 % temporary scale, 400 ms debounce, empty blocklist). |
+| <a id="cfg-defaults"></a>`cfg-defaults` | All settings and their defaults (200 % default scale, 266 % temporary scale, 400 ms debounce, empty blocklist, update check on). |
 | <a id="cfg-paths"></a>`cfg-paths` | Lookup order: `/etc/kohaku-tabletd/config.toml`, then `~/.config/kohaku-tabletd/config.toml`. |
 | <a id="cfg-load"></a>`cfg-load` | Merges files (later wins), coerces types, rejects unknown keys and non-string blocklists. |
-| <a id="cfg-validate"></a>`cfg-validate` | Checks settings changes from D-Bus: only scales (1–4) and the blocklist; dedupes and sorts names. |
+| <a id="cfg-validate"></a>`cfg-validate` | Checks settings changes from D-Bus: scales (1–4), the blocklist (deduped, sorted) and the update-check switch. |
 | <a id="cfg-toml"></a>`cfg-toml` | Minimal TOML writer for the flat user config (strings, numbers, lists). |
 | <a id="cfg-save"></a>`cfg-save` | Merges changes into the user config, keeping other keys; writes atomically. |
 
@@ -33,6 +33,16 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | ID | What it does |
 |---|---|
 | <a id="fmt-helpers"></a>`fmt-helpers` | Shared text helpers: strip GDBus error prefixes, scales as percent, nearest supported scale, call timestamps. |
+| <a id="fmt-update"></a>`fmt-update` | One-line update status for the About tab. |
+
+## `src/kohaku_tabletd/updates.py`
+
+| ID | What it does |
+|---|---|
+| <a id="upd-version"></a>`upd-version` | Parses release tags (`v0.3.0`, `0.3.0-rc1`) and compares them with the installed version. |
+| <a id="upd-fetch"></a>`upd-fetch` | Asks the GitHub API for the latest release; a 404 means nothing is published yet. |
+| <a id="upd-check"></a>`upd-check` | One check as a result dict (`available`, `up-to-date`, `no-release`, `error`); never raises. |
+| <a id="upd-state"></a>`upd-state` | Last result and last notified version in `~/.local/state/kohaku-tabletd/update.json`. |
 
 ## `src/kohaku_tabletd/state.py`
 
@@ -72,7 +82,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 
 | ID | What it does |
 |---|---|
-| <a id="dmn-iface"></a>`dmn-iface` | D-Bus interface: trigger methods (`Toggle`, `SetMode`, `Auto`, `Reapply`), `Status`, `GetSettings`/`SetSettings`, `RecentCalls`; signals `ModeChanged`, `SettingsChanged`, `CallRecorded`. |
+| <a id="dmn-iface"></a>`dmn-iface` | D-Bus interface: trigger methods (`Toggle`, `SetMode`, `Auto`, `Reapply`), `Status`, `GetSettings`/`SetSettings`, `RecentCalls`, `CheckForUpdates`; signals `ModeChanged`, `SettingsChanged`, `CallRecorded`. |
 | <a id="dmn-apply"></a>`dmn-apply` | Applies the effective mode's scale via Mutter or `apply_command`, then emits `ModeChanged`. The only place a scale is set. |
 | <a id="dmn-record"></a>`dmn-record` | Keeps the last 50 triggers in memory and emits `CallRecorded`. |
 | <a id="dmn-identify"></a>`dmn-identify` | Resolves a D-Bus sender to its PID, then to source and chain via `callers`. |
@@ -81,7 +91,9 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="dmn-debounce"></a>`dmn-debounce` | After the hinge settles, reads the real state once; on a transition records it (source `hinge`) and applies. |
 | <a id="dmn-dbus-methods"></a>`dmn-dbus-methods` | Dispatches method calls; invalid input, file and apply failures become D-Bus errors. |
 | <a id="dmn-trigger"></a>`dmn-trigger` | Trigger API: identifies and records the caller, refuses blocklisted sources with `Error.Blocked`, otherwise acts. |
-| <a id="dmn-settings"></a>`dmn-settings` | Settings over D-Bus: current values plus supported scales; changes are validated, saved, broadcast, and reapplied if a scale changed. |
+| <a id="dmn-settings"></a>`dmn-settings` | Settings over D-Bus: current values, supported scales and update status; changes are validated, saved, broadcast, and reapplied if a scale changed. |
+| <a id="dmn-updates"></a>`dmn-updates` | Update checks in a worker thread: on demand, 60 s after start and hourly once the last check is a day old (if enabled); results are saved and broadcast. |
+| <a id="dmn-notify"></a>`dmn-notify` | Desktop notification once per new version; clicking it opens the release page. |
 | <a id="dmn-run"></a>`dmn-run` | Exports the object, owns the bus name (single instance), handles SIGINT/SIGTERM. |
 
 ## `src/kohaku_tabletd/cli.py`
@@ -104,6 +116,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="ui-sources"></a>`ui-sources` | Sources tab: recent calls and the blocklist, updated live from daemon signals. |
 | <a id="ui-recent"></a>`ui-recent` | Recent-call rows (newest first) with a Block/Unblock button; hinge rows have none. |
 | <a id="ui-blocklist"></a>`ui-blocklist` | Blocklist rows with remove buttons and an entry row to add a name. |
+| <a id="ui-about"></a>`ui-about` | About tab: version, GitHub link, update-check switch, status with Check now / Open release. |
 | <a id="ui-pages"></a>`ui-pages` | Tab registry; future settings are added here as new `Page` subclasses. |
 | <a id="ui-window"></a>`ui-window` | Window: view switcher over the tabs, toast overlay, forwards daemon signals to tabs. |
 | <a id="ui-app"></a>`ui-app` | Single-instance app; shows an error page if the daemon is unreachable. |

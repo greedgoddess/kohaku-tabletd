@@ -6,7 +6,7 @@ import tomllib
 from dataclasses import dataclass, field
 
 SYSTEM_PATH = "/etc/kohaku-tabletd/config.toml"
-EDITABLE = ("laptop_scale", "tablet_scale", "blocklist")  # changeable over D-Bus
+EDITABLE = ("laptop_scale", "tablet_scale", "blocklist", "update_check")  # changeable over D-Bus
 
 
 # [doc:cfg-defaults]
@@ -19,6 +19,7 @@ class Config:
     switch_device: str = ""  # e.g. "/dev/input/event5"; empty = auto-detect
     apply_command: str = ""  # replaces the Mutter backend; {scale} and {mode} are substituted
     blocklist: list = field(default_factory=list)  # caller sources the trigger API refuses
+    update_check: bool = True  # daily check against GitHub releases, with a notification
 
 
 # [doc:cfg-paths]
@@ -32,6 +33,8 @@ def _coerce(key, value, current):
         if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
             raise ValueError(f"{key} must be a list of strings")
         return list(value)
+    if isinstance(current, bool) and not isinstance(value, bool):
+        raise ValueError(f"{key} must be true or false")
     return type(current)(value)
 
 
@@ -63,6 +66,9 @@ def validate_update(update):
             value = float(value)
             if not 1.0 <= value <= 4.0:
                 raise ValueError(f"{key} must be between 1 and 4")
+        elif key == "update_check":
+            if not isinstance(value, bool):
+                raise ValueError("update_check must be true or false")
         else:
             if not isinstance(value, (list, tuple)) or not all(isinstance(v, str) for v in value):
                 raise ValueError("blocklist must be a list of names")
