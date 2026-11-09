@@ -1,0 +1,9 @@
+# kohaku-tabletd system defaults.
+# Per-user overrides: ~/.config/kohaku-tabletd/config.toml (same keys).
+
+# laptop_scale = 2.0
+# tablet_scale = 2.6667     # the nearest scale Mutter offers is used
+# debounce_ms = 400         # wait this long for the hinge to settle
+# output = ""               # connector, e.g. "eDP-1"; empty = built-in panel
+# switch_device = ""        # e.g. "/dev/input/event5"; empty = auto-detect
+# apply_command = ""        # bypass Mutter, e.g. "/usr/local/bin/my-scale {scale} {mode}"

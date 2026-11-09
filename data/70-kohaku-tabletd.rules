@@ -1,0 +1,4 @@
+# [doc:udv-uaccess]
+# Let the active seat user read switch devices (tablet mode, lid) so the
+# user-level daemon can watch SW_TABLET_MODE without root.
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_SWITCH}=="1", TAG+="uaccess"

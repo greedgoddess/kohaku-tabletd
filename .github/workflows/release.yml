@@ -1,0 +1,22 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - run: dnf -y install git make rpm-build python3 python3-devel systemd-rpm-macros
+      - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Tag matches version
+        run: test "v$(make -s version)" = "$GITHUB_REF_NAME"
+      - run: make rpm
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            rpmbuild/RPMS/noarch/*.rpm
+            rpmbuild/SRPMS/*.src.rpm

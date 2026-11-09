@@ -1,0 +1,61 @@
+Name:           kohaku-tabletd
+Version:        0.1.0
+Release:        1%{?dist}
+Summary:        Tablet-mode aware display scaling with a single D-Bus control daemon
+License:        MIT
+URL:            https://github.com/greedgoddess/kohaku-tabletd
+Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
+BuildArch:      noarch
+
+BuildRequires:  make
+BuildRequires:  python3-devel
+BuildRequires:  systemd-rpm-macros
+Requires:       python3
+Requires:       python3-gobject-base
+Requires:       systemd-udev
+
+%description
+A user-level daemon that watches the kernel tablet-mode switch, switches the
+display scale between a laptop and a tablet value, and exposes a D-Bus API and
+CLI (toggle, laptop, tablet, auto, status) so keyboard shortcuts and other
+tools all go through one control instance.
+
+%prep
+%autosetup
+
+%build
+
+%install
+%make_install PREFIX=%{_prefix} SYSCONFDIR=%{_sysconfdir}
+%py_byte_compile %{python3} %{buildroot}%{_prefix}/lib/%{name}
+
+%check
+make check
+
+# [doc:spec-post]
+%post
+%systemd_user_post %{name}.service
+%udev_rules_update
+udevadm trigger --subsystem-match=input --property-match=ID_INPUT_SWITCH=1 >/dev/null 2>&1 || :
+
+%preun
+%systemd_user_preun %{name}.service
+
+%postun
+%udev_rules_update
+
+%files
+%license LICENSE
+%doc README.md docs/CODE.md data/keyd-example.conf
+%{_bindir}/%{name}
+%{_prefix}/lib/%{name}/
+%{_userunitdir}/%{name}.service
+%{_userpresetdir}/80-%{name}.preset
+%{_datadir}/dbus-1/services/io.github.greedgoddess.KohakuTabletd.service
+%{_udevrulesdir}/70-%{name}.rules
+%dir %{_sysconfdir}/%{name}
+%config(noreplace) %{_sysconfdir}/%{name}/config.toml
+
+%changelog
+* Mon Nov 09 2026 greedgoddess <352940295+greedgoddess@users.noreply.github.com> - 0.1.0-1
+- Initial package

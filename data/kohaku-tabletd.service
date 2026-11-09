@@ -1,0 +1,16 @@
+# [doc:unit-session]
+[Unit]
+Description=Tablet-mode display scaling daemon
+Documentation=https://github.com/greedgoddess/kohaku-tabletd
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=io.github.greedgoddess.KohakuTabletd
+ExecStart=/usr/bin/kohaku-tabletd daemon
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=io.github.greedgoddess.KohakuTabletd
+Exec=/bin/false
+SystemdService=kohaku-tabletd.service
