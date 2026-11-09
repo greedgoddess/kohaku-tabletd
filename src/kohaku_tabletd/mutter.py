@@ -7,7 +7,7 @@ from . import layout
 BUS = "org.gnome.Mutter.DisplayConfig"
 PATH = "/org/gnome/Mutter/DisplayConfig"
 IFACE = BUS
-METHOD_PERSISTENT = 2
+METHOD_TEMPORARY = 1  # persistent (2) makes GNOME ask "keep changes?"
 LAYOUT_LOGICAL = 1
 STATE_TYPE = "(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})"
 APPLY_TYPE = "(uua(iiduba(ssa{sv}))a{sv})"
@@ -49,7 +49,8 @@ def read_state(bus):
 # [doc:mut-apply]
 def apply_scale(target, output=""):
     """Rescale one monitor (nearest supported scale), keep everything else.
-    Returns the scale actually used."""
+    Applied as a temporary config: no confirmation dialog, and the daemon
+    reapplies the right scale at login anyway. Returns the scale used."""
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     serial, lms, modes, props = read_state(bus)
     index = layout.find_target(lms, output)
@@ -69,6 +70,6 @@ def apply_scale(target, output=""):
     if props.get("supports-changing-layout-mode") and "layout-mode" in props:
         apply_props["layout-mode"] = GLib.Variant("u", props["layout-mode"])
     bus.call_sync(BUS, PATH, IFACE, "ApplyMonitorsConfig",
-                  GLib.Variant(APPLY_TYPE, (serial, METHOD_PERSISTENT, config, apply_props)),
+                  GLib.Variant(APPLY_TYPE, (serial, METHOD_TEMPORARY, config, apply_props)),
                   None, Gio.DBusCallFlags.NONE, -1, None)
     return scale

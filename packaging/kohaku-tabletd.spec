@@ -1,5 +1,5 @@
 Name:           kohaku-tabletd
-Version:        0.1.0
+Version:        0.1.1
 Release:        1%{?dist}
 Summary:        Tablet-mode aware display scaling with a single D-Bus control daemon
 License:        MIT
@@ -57,5 +57,8 @@ udevadm trigger --subsystem-match=input --property-match=ID_INPUT_SWITCH=1 >/dev
 %config(noreplace) %{_sysconfdir}/%{name}/config.toml
 
 %changelog
+* Mon Nov 09 2026 greedgoddess <352940295+greedgoddess@users.noreply.github.com> - 0.1.1-1
+- Apply scale as temporary config so GNOME no longer asks to keep changes
+
 * Mon Nov 09 2026 greedgoddess <352940295+greedgoddess@users.noreply.github.com> - 0.1.0-1
 - Initial package

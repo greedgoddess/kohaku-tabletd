@@ -48,7 +48,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | ID | What it does |
 |---|---|
 | <a id="mut-state"></a>`mut-state` | Reads `GetCurrentState` and flattens it into logical monitors and current mode ids. |
-| <a id="mut-apply"></a>`mut-apply` | Applies the new scale persistently via `ApplyMonitorsConfig`, keeping modes, transforms, primary and layout mode; no-op if unchanged. |
+| <a id="mut-apply"></a>`mut-apply` | Applies the new scale via `ApplyMonitorsConfig` as a temporary config (no "keep changes?" dialog; the daemon reapplies at login), keeping modes, transforms, primary and layout mode; no-op if unchanged. |
 
 ## `src/kohaku_tabletd/daemon.py`
 
