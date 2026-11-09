@@ -15,8 +15,19 @@ jobs:
       - name: Tag matches version
         run: test "v$(make -s version)" = "$GITHUB_REF_NAME"
       - run: make rpm
+      # checkout drops the tag message; fetch the annotated tag itself.
+      # Subject = release title, body = release notes (lightweight tags fall
+      # back to the commit message).
+      - name: Release notes from the tag
+        id: notes
+        run: |
+          git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          git tag -l --format='%(contents:body)' "$GITHUB_REF_NAME" > release-notes.md
+          echo "title=$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")" >> "$GITHUB_OUTPUT"
       - uses: softprops/action-gh-release@v2
         with:
+          name: ${{ steps.notes.outputs.title || github.ref_name }}
+          body_path: release-notes.md
           files: |
             rpmbuild/RPMS/noarch/*.rpm
             rpmbuild/SRPMS/*.src.rpm
