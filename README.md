@@ -29,17 +29,21 @@ kohaku-tabletd status
 A manual override lasts until the hinge actually changes mode. Hinge bounces
 are debounced, and only the daemon ever touches the display config.
 
-From keyd (runs as root), add `--active-user`, see `data/keyd-example.conf`:
+To trigger it from a key, e.g. the Chromebook scale key via keyd (runs as root,
+hence `--active-user`):
 
 ```ini
 scale = command(/usr/bin/kohaku-tabletd --active-user toggle)
 ```
 
+Suggested local key setups, including a double tap that opens the settings
+window, are in [`docs/KEYD.md`](docs/KEYD.md).
+
 ## Settings window
 
 "Tablet Mode" in the app grid, or `kohaku-tabletd settings`. To open it from
 a key, e.g. by double-tapping the scale key while a single tap keeps toggling,
-see the suggested local setup in [`docs/KEYD.md`](docs/KEYD.md).
+see setup B in [`docs/KEYD.md`](docs/KEYD.md).
 
 
 - **Scaling**: current state, the **default scale** and the **temporary zoom**,
