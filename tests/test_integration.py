@@ -139,6 +139,58 @@ class GSettingsOverrideTest(unittest.TestCase):
         dock.leave(saved)
         self.assertEqual((settings.get_boolean("dock-fixed"), settings.get_int("icon-size")), (False, 32))
 
+    def extension_dock(self, enabled, accept=True):
+        calls = []
+        info = {"uuid": "dock@example.com", "enabled": enabled}
+
+        def shell(_self, method, *args):
+            calls.append((method,) + args)
+            if method == "GetExtensionInfo":
+                return (info if args[0] == "dock@example.com" else {},)
+            return (accept,)
+
+        cls = type("ExtDock", (integration.GnomeExtensionOverride,), {
+            "id": "ext", "schema_id": "org.example.dock", "schema_dirs": (self.tmp.name,),
+            "overrides": {"dock-fixed": True},
+            "extension_uuids": ("other@example.com", "dock@example.com"), "_shell": shell})
+        return cls(), calls
+
+    def test_extension_switched_on_only_while_folded(self):
+        dock, calls = self.extension_dock(enabled=False)
+        settings, _ = dock._settings()
+        self.assertEqual(dock.available(), (True, ""))
+        saved = dock.enter()
+        self.assertIn(("EnableExtension", "dock@example.com"), calls)
+        self.assertTrue(settings.get_boolean("dock-fixed"))
+        dock.leave(saved)
+        self.assertEqual(calls[-1], ("DisableExtension", "dock@example.com"))
+        self.assertFalse(settings.get_boolean("dock-fixed"))
+
+    def test_extension_already_on_stays_on(self):
+        dock, calls = self.extension_dock(enabled=True)
+        dock.leave(dock.enter())
+        self.assertFalse([c for c in calls if c[0] in ("EnableExtension", "DisableExtension")])
+
+    def test_refused_enable_rolls_back_settings(self):
+        dock, _calls = self.extension_dock(enabled=False, accept=False)
+        settings, _ = dock._settings()
+        with self.assertRaises(RuntimeError):
+            dock.enter()
+        self.assertFalse(settings.get_boolean("dock-fixed"))
+
+    def test_leave_accepts_plain_gsettings_state(self):
+        dock, calls = self.extension_dock(enabled=False)
+        settings, _ = dock._settings()
+        settings.set_boolean("dock-fixed", True)
+        dock.leave({"dock-fixed": "false"})  # written by 0.6.0
+        self.assertFalse(settings.get_boolean("dock-fixed"))
+        self.assertFalse([c for c in calls if c[0] == "DisableExtension"])
+
+    def test_extension_not_installed(self):
+        dock, _calls = self.extension_dock(enabled=False)
+        dock.extension_uuids = ("missing@example.com",)
+        self.assertEqual(dock.available(), (False, "extension not installed"))
+
     def test_unavailable_reasons(self):
         self.assertIn("not installed", self.dock(schema_id="org.example.none").available()[1])
         self.assertIn("missing nope", self.dock(overrides={"nope": 1}).available()[1])

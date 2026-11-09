@@ -15,6 +15,7 @@ import pkgutil
 
 log = logging.getLogger("kohaku-tabletd")
 CATEGORIES = ("dock", "launcher", "desktop")
+SHELL_EXTENSIONS = ("org.gnome.Shell", "/org/gnome/Shell", "org.gnome.Shell.Extensions")
 
 
 # [doc:int-base]
@@ -98,6 +99,70 @@ class GSettingsOverride(Integration):
         for key, text in saved.items():
             settings.set_value(key, GLib.Variant.parse(None, text, None, None))
         Gio.Settings.sync()
+
+
+# [doc:int-shell-ext]
+class GnomeExtensionOverride(GSettingsOverride):
+    """GSettingsOverride for a GNOME Shell extension that is also switched on
+    while folded if it is off, and off again afterwards. Set extension_uuids
+    (first installed one wins). Uses GNOME Shell's Extensions D-Bus API."""
+
+    extension_uuids = ()
+
+    def _shell(self, method, *args):
+        from gi.repository import Gio, GLib
+
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        params = GLib.Variant("(" + "s" * len(args) + ")", args) if args else None
+        return bus.call_sync(*SHELL_EXTENSIONS, method, params, None,
+                             Gio.DBusCallFlags.NONE, 5000, None).unpack()
+
+    def _installed(self):
+        """(uuid, info) of the first installed extension, or (None, {})."""
+        for uuid in self.extension_uuids:
+            info = self._shell("GetExtensionInfo", uuid)[0]
+            if info:
+                return uuid, info
+        return None, {}
+
+    @staticmethod
+    def _is_enabled(info):
+        if "enabled" in info:  # GNOME 45+
+            return bool(info["enabled"])
+        return info.get("state") == 1  # older: ENABLED
+
+    def available(self):
+        ok, reason = super().available()
+        if not ok:
+            return ok, reason
+        try:
+            uuid, _info = self._installed()
+        except Exception as exc:
+            return False, f"GNOME Shell not reachable ({exc})"
+        return (True, "") if uuid else (False, "extension not installed")
+
+    def enter(self):
+        uuid, info = self._installed()
+        if uuid is None:
+            raise RuntimeError("extension not installed")
+        settings = super().enter()  # settings first, so it starts already pinned
+        was_enabled = self._is_enabled(info)
+        if not was_enabled:
+            try:
+                if not self._shell("EnableExtension", uuid)[0]:
+                    raise RuntimeError(f"GNOME Shell refused to enable {uuid}")
+            except Exception:
+                super().leave(settings)
+                raise
+        return {"settings": settings, "extension": uuid, "was_enabled": was_enabled}
+
+    def leave(self, saved):
+        if "settings" not in saved:  # state written by a plain GSettingsOverride
+            super().leave(saved)
+            return
+        if not saved.get("was_enabled", True):
+            self._shell("DisableExtension", saved["extension"])
+        super().leave(saved["settings"])
 
 
 # [doc:int-store]

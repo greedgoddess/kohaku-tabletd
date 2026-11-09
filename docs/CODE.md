@@ -35,6 +35,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 |---|---|
 | <a id="int-base"></a>`int-base` | Plugin base class: id, title, description, category; `available()`, `enter()` returns what `leave()` restores. |
 | <a id="int-gsettings"></a>`int-gsettings` | Ready-made plugin for GSettings keys, incl. schemas shipped inside extensions; saves and restores the previous values. |
+| <a id="int-shell-ext"></a>`int-shell-ext` | GSettings plugin for a GNOME Shell extension that is also switched on while folded (if off) and off again afterwards, via the Shell's Extensions D-Bus API. |
 | <a id="int-store"></a>`int-store` | Active integrations and their saved values in `~/.local/state/kohaku-tabletd/integrations.json`, so a crash still restores later. |
 | <a id="int-discover"></a>`int-discover` | Finds plugins in the package and in `~/.local/share/kohaku-tabletd/integrations/`; broken ones are logged and skipped, packaged ids win. |
 | <a id="int-manager"></a>`int-manager` | Makes each integration active exactly when folded and enabled; failures are isolated per integration and reported. |
@@ -43,7 +44,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 
 | ID | What it does |
 |---|---|
-| <a id="d2d-integration"></a>`d2d-integration` | Dash to Dock / Ubuntu Dock: sets `dock-fixed` in tablet mode (always visible, reserves its space). Built in, off until enabled. |
+| <a id="d2d-integration"></a>`d2d-integration` | Dash to Dock / Ubuntu Dock: while folded, switches the extension on if it is off and sets `dock-fixed` (always visible, reserves its space). Built in, off until enabled. |
 
 ## `src/kohaku_tabletd/monitorsxml.py`
 

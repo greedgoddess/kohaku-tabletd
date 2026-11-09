@@ -16,7 +16,7 @@ says so and stays inactive.
 
 | Integration | What it does |
 |---|---|
-| Dash to Dock (also Ubuntu Dock) | Keeps the dock always visible (`dock-fixed`), which also reserves its space so maximized and tiled windows stop at its edge. |
+| Dash to Dock (also Ubuntu Dock) | Switches the extension on while folded if it is off, so you can have a dock in tablet mode only. Keeps it always visible (`dock-fixed`), which also reserves its space so maximized and tiled windows stop at its edge. Needs the extension installed, e.g. `sudo dnf install gnome-shell-extension-dash-to-dock`. |
 
 ## Writing one
 
@@ -52,6 +52,28 @@ INTEGRATIONS = [BigIcons]
 
 The helper saves the current values when tablet mode starts and restores them
 afterwards; it reports "not installed" if the schema can't be found.
+
+### GNOME Shell extensions
+
+For an extension that should run only in tablet mode, use
+`GnomeExtensionOverride`: same as above plus `extension_uuids`. It switches the
+extension on while folded if it was off, and off again afterwards.
+
+```python
+from kohaku_tabletd.integration import GnomeExtensionOverride
+
+
+class TabletPanel(GnomeExtensionOverride):
+    id = "my-panel"
+    title = "Show my panel in tablet mode"
+    category = "desktop"
+    schema_id = "org.gnome.shell.extensions.my-panel"
+    overrides = {"autohide": False}
+    extension_uuids = ("my-panel@example.com",)
+
+
+INTEGRATIONS = [TabletPanel]
+```
 
 ### Anything else
 
