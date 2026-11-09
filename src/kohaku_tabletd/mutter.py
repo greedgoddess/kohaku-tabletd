@@ -73,3 +73,12 @@ def apply_scale(target, output=""):
                   GLib.Variant(APPLY_TYPE, (serial, METHOD_TEMPORARY, config, apply_props)),
                   None, Gio.DBusCallFlags.NONE, -1, None)
     return scale
+
+
+# [doc:mut-supported]
+def supported_scales(output=""):
+    """Scales Mutter offers for the target monitor's current mode."""
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    _serial, lms, _modes, _props = read_state(bus)
+    index = layout.find_target(lms, output)
+    return [] if index is None else sorted(lms[index]["supported"])

@@ -5,7 +5,7 @@ import os
 import pwd
 import sys
 
-from . import BUS_NAME, INTERFACE, OBJECT_PATH, __version__
+from . import BUS_NAME, INTERFACE, OBJECT_PATH, __version__, fmt
 
 # [doc:cli-commands]
 COMMANDS = {
@@ -63,8 +63,7 @@ def call(command):
         reply = bus.call_sync(BUS_NAME, OBJECT_PATH, INTERFACE, method, params, None,
                               Gio.DBusCallFlags.NONE, 20000, None)
     except GLib.Error as exc:
-        Gio.DBusError.strip_remote_error(exc)
-        print(f"kohaku-tabletd: {exc.message}", file=sys.stderr)
+        print(f"kohaku-tabletd: {fmt.remote_error(exc.message)}", file=sys.stderr)
         return 1
     result = reply.unpack()[0]
     if isinstance(result, dict):
@@ -85,12 +84,16 @@ def main(argv=None):
                         help="when run as root (e.g. from keyd), act in the active session on seat0")
     sub = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
     sub.add_parser("daemon", help="run the control daemon (started by systemd --user)")
+    sub.add_parser("settings", help="open the settings window")
     for name, (_method, _arg, text) in COMMANDS.items():
         sub.add_parser(name, help=text)
     args = parser.parse_args(argv)
     if args.command == "daemon":
         from .daemon import main as run_daemon
         return run_daemon()
+    if args.command == "settings":
+        from .settings_ui import main as run_settings
+        return run_settings()
     if args.active_user:
         become_active_user()
     return call(args.command)

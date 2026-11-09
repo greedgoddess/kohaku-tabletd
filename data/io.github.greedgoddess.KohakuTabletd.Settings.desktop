@@ -1,0 +1,11 @@
+# [doc:app-desktop]
+[Desktop Entry]
+Type=Application
+Name=Tablet Mode
+Comment=Scaling, trigger sources and blocklist for kohaku-tabletd
+Exec=kohaku-tabletd settings
+Icon=input-tablet
+Terminal=false
+Categories=Settings;HardwareSettings;GTK;
+Keywords=tablet;scale;scaling;hinge;convertible;touch;
+StartupNotify=true

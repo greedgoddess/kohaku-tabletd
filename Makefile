@@ -20,6 +20,8 @@ install:
 	  $(DESTDIR)$(PREFIX)/share/dbus-1/services/io.github.greedgoddess.KohakuTabletd.service
 	install -Dm 644 data/70-$(NAME).rules $(DESTDIR)$(PREFIX)/lib/udev/rules.d/70-$(NAME).rules
 	install -Dm 644 data/config.toml $(DESTDIR)$(SYSCONFDIR)/$(NAME)/config.toml
+	install -Dm 644 data/io.github.greedgoddess.KohakuTabletd.Settings.desktop \
+	  $(DESTDIR)$(PREFIX)/share/applications/io.github.greedgoddess.KohakuTabletd.Settings.desktop
 
 # [doc:mk-check]
 check:

@@ -35,19 +35,34 @@ From keyd (runs as root), add `--active-user`, see `data/keyd-example.conf`:
 scale = command(/usr/bin/kohaku-tabletd --active-user toggle)
 ```
 
+## Settings window
+
+"Tablet Mode" in the app grid (or `kohaku-tabletd settings`):
+
+- **Scaling**: current state, the default scale (laptop mode) and the temporary
+  scale (tablet mode and shortcut), chosen from the scales GNOME offers.
+- **Sources**: the last 50 trigger calls with their source (e.g. `keyd`) and
+  process chain, plus a blocklist. Calls from blocked sources are refused.
+
+Further settings get their own tab (`PAGES` in `settings_ui.py`).
+
 ## Configure
 
 `/etc/kohaku-tabletd/config.toml`, overridden by
 `~/.config/kohaku-tabletd/config.toml`. Keys: `laptop_scale`, `tablet_scale`,
-`debounce_ms`, `output`, `switch_device`, `apply_command`. Then run
-`systemctl --user restart kohaku-tabletd`.
+`debounce_ms`, `output`, `switch_device`, `apply_command`, `blocklist`. The
+settings window writes the user file; for other keys run
+`systemctl --user restart kohaku-tabletd` after editing.
 
 ## D-Bus
 
 `io.github.greedgoddess.KohakuTabletd` on the session bus, object
 `/io/github/greedgoddess/KohakuTabletd`: methods `Toggle`, `SetMode(s)`,
-`Auto`, `Reapply` (each returns the effective mode), `Status` → `a{sv}`,
-signal `ModeChanged(s mode, d scale, b manual)`.
+`Auto`, `Reapply` (trigger API, each returns the effective mode; blocked
+sources get `…Error.Blocked`), `Status` and `GetSettings` → `a{sv}`,
+`SetSettings(a{sv})`, `RecentCalls` → `a(xsssb)`; signals
+`ModeChanged(s mode, d scale, b manual)`, `SettingsChanged(a{sv})`,
+`CallRecorded(x time_ms, s action, s source, s chain, b blocked)`.
 
 ## Develop
 

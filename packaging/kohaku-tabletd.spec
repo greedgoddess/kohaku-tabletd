@@ -1,5 +1,5 @@
 Name:           kohaku-tabletd
-Version:        0.1.1
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Tablet-mode aware display scaling with a single D-Bus control daemon
 License:        MIT
@@ -11,14 +11,17 @@ BuildRequires:  make
 BuildRequires:  python3-devel
 BuildRequires:  systemd-rpm-macros
 Requires:       python3
-Requires:       python3-gobject-base
+Requires:       python3-gobject
+Requires:       gtk4
+Requires:       libadwaita
 Requires:       systemd-udev
 
 %description
 A user-level daemon that watches the kernel tablet-mode switch, switches the
 display scale between a laptop and a tablet value, and exposes a D-Bus API and
 CLI (toggle, laptop, tablet, auto, status) so keyboard shortcuts and other
-tools all go through one control instance.
+tools all go through one control instance, plus a settings window for the
+scales, recent trigger sources and a caller blocklist.
 
 %prep
 %autosetup
@@ -53,10 +56,15 @@ udevadm trigger --subsystem-match=input --property-match=ID_INPUT_SWITCH=1 >/dev
 %{_userpresetdir}/80-%{name}.preset
 %{_datadir}/dbus-1/services/io.github.greedgoddess.KohakuTabletd.service
 %{_udevrulesdir}/70-%{name}.rules
+%{_datadir}/applications/io.github.greedgoddess.KohakuTabletd.Settings.desktop
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.toml
 
 %changelog
+* Mon Nov 09 2026 greedgoddess <352940295+greedgoddess@users.noreply.github.com> - 0.2.0-1
+- Settings window: default/temporary scale, recent trigger sources, blocklist
+- Trigger API records callers and refuses blocked sources
+
 * Mon Nov 09 2026 greedgoddess <352940295+greedgoddess@users.noreply.github.com> - 0.1.1-1
 - Apply scale as temporary config so GNOME no longer asks to keep changes
 
