@@ -69,6 +69,12 @@ class Page(Adw.PreferencesPage):
     def on_signal(self, name, args):
         pass
 
+    def open_uri(self, uri):
+        try:
+            Gio.AppInfo.launch_default_for_uri(uri, None)
+        except GLib.Error as exc:
+            self.toast(exc.message)
+
 
 SCALE_ROWS = (
     ("default_scale", "Default scale",
@@ -168,8 +174,13 @@ class SourcesPage(Page):
         self.calls, self.blocklist = [], []
         recent = Adw.PreferencesGroup(
             title="Recent calls",
-            description="Who used the trigger API since the daemon started, newest first. "
-                        "Hinge changes are listed for context.")
+            description="Who used the trigger API since the daemon started, newest first; "
+                        "hinge changes are listed for context. Trigger a call with "
+                        "“kohaku-tabletd toggle” from a terminal, a key binding or a script.")
+        how = Gtk.Button(label="How to trigger", valign=Gtk.Align.CENTER, css_classes=["flat"],
+                         tooltip_text=updates.TRIGGERS_DOC_URL)
+        how.connect("clicked", lambda _b: self.open_uri(updates.TRIGGERS_DOC_URL))
+        recent.set_header_suffix(how)
         self.recent_box = self._list_box("No calls yet")
         recent.add(self.recent_box)
         blocked = Adw.PreferencesGroup(
@@ -307,12 +318,6 @@ class AboutPage(Page):
     def _on_toggle(self, row, _pspec):
         if not self._updating:
             self.guard(self.client.update, update_check=row.get_active())
-
-    def open_uri(self, uri):
-        try:
-            Gio.AppInfo.launch_default_for_uri(uri, None)
-        except GLib.Error as exc:
-            self.toast(exc.message)
 
     def on_signal(self, name, args):
         if name == "SettingsChanged":

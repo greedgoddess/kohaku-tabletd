@@ -12,6 +12,7 @@ from . import __version__
 REPO = "greedgoddess/kohaku-tabletd"
 REPO_URL = f"https://github.com/{REPO}"
 RELEASES_URL = REPO_URL + "/releases/latest"
+TRIGGERS_DOC_URL = REPO_URL + "/blob/master/docs/TRIGGERS.md"
 API_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 
 

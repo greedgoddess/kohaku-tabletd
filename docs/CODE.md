@@ -121,10 +121,10 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | ID | What it does |
 |---|---|
 | <a id="ui-client"></a>`ui-client` | D-Bus proxy to the daemon (activation starts it if needed). |
-| <a id="ui-page-base"></a>`ui-page-base` | Base class for a tab: daemon client, error toasts, signal hook. |
+| <a id="ui-page-base"></a>`ui-page-base` | Base class for a tab: daemon client, error toasts, opening links, signal hook. |
 | <a id="ui-scaling"></a>`ui-scaling` | Scaling tab: current mode, GNOME's default scale (shows when GNOME is waiting for confirmation) and the temporary zoom. |
 | <a id="ui-scale-rows"></a>`ui-scale-rows` | Dropdowns of supported scales, or spin rows when none are reported. |
-| <a id="ui-sources"></a>`ui-sources` | Sources tab: recent calls and the blocklist, updated live from daemon signals. |
+| <a id="ui-sources"></a>`ui-sources` | Sources tab: recent calls (with a hint and a "How to trigger" link to `docs/TRIGGERS.md`) and the blocklist, updated live from daemon signals. |
 | <a id="ui-recent"></a>`ui-recent` | Recent-call rows (newest first) with a Block/Unblock button; hinge rows have none. |
 | <a id="ui-blocklist"></a>`ui-blocklist` | Blocklist rows with remove buttons and an entry row to add a name. |
 | <a id="ui-about"></a>`ui-about` | About tab: app icon header, version, GitHub link, update-check switch, status with Check now / Open release. |

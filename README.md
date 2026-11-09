@@ -36,15 +36,13 @@ hence `--active-user`):
 scale = command(/usr/bin/kohaku-tabletd --active-user toggle)
 ```
 
-Suggested local key setups, including a double tap that opens the settings
-window, are in [`docs/KEYD.md`](docs/KEYD.md).
+All ways to trigger a switch (terminal, keyd, GNOME shortcut, D-Bus) are in
+[`docs/TRIGGERS.md`](docs/TRIGGERS.md).
 
 ## Settings window
 
 "Tablet Mode" is a regular app with its own icon (app grid, search, GNOME
-Software), or run `kohaku-tabletd settings`. To open it from
-a key, e.g. by double-tapping the scale key while a single tap keeps toggling,
-see setup B in [`docs/KEYD.md`](docs/KEYD.md).
+Software), or run `kohaku-tabletd settings`.
 
 
 - **Scaling**: current state, the **default scale** and the **temporary zoom**,
