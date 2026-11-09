@@ -17,11 +17,12 @@ jobs:
       - run: make rpm
       # checkout drops the tag message; fetch the annotated tag itself.
       # The release is titled with the tag (the version); the tag message is
-      # the release notes (lightweight tags fall back to the commit message).
+      # the release notes, without the SSH/GPG signature block of signed tags
+      # (lightweight tags fall back to the commit message).
       - name: Release notes from the tag message
         run: |
           git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
-          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > release-notes.md
+          git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$GITHUB_REF_NAME" > release-notes.md
       - uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}

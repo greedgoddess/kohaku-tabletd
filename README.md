@@ -16,7 +16,8 @@ systemctl --user start kohaku-tabletd   # or log out and in
 ```
 
 Tagged releases (`v*`) publish the RPM on GitHub Releases, titled with the
-version tag. Use an annotated tag: its message becomes the release notes.
+version tag. Use an annotated (or signed) tag: its message becomes the release
+notes; a tag signature is left out.
 
 ## Use
 
