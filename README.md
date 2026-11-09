@@ -15,8 +15,8 @@ make rpm && sudo dnf install rpmbuild/RPMS/noarch/kohaku-tabletd-*.rpm
 systemctl --user start kohaku-tabletd   # or log out and in
 ```
 
-Tagged releases (`v*`) publish the RPM on GitHub Releases. Use an annotated tag:
-its first line becomes the release title, the rest the release notes.
+Tagged releases (`v*`) publish the RPM on GitHub Releases, titled with the
+version tag. Use an annotated tag: its message becomes the release notes.
 
 ## Use
 
