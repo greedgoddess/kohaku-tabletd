@@ -41,7 +41,8 @@ window, are in [`docs/KEYD.md`](docs/KEYD.md).
 
 ## Settings window
 
-"Tablet Mode" in the app grid, or `kohaku-tabletd settings`. To open it from
+"Tablet Mode" is a regular app with its own icon (app grid, search, GNOME
+Software), or run `kohaku-tabletd settings`. To open it from
 a key, e.g. by double-tapping the scale key while a single tap keeps toggling,
 see setup B in [`docs/KEYD.md`](docs/KEYD.md).
 

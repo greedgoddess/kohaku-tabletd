@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
-      - run: dnf -y install git make rpm-build python3 python3-devel systemd-rpm-macros
+      - run: dnf -y install git make rpm-build python3 python3-devel systemd-rpm-macros desktop-file-utils libappstream-glib
       - uses: actions/checkout@v4
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Tag matches version

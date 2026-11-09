@@ -253,6 +253,14 @@ class AboutPage(Page):
         super().__init__(client, toast)
         self._updating = False
         self._release_url = updates.RELEASES_URL
+        header = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_bottom=6)
+        header.append(Gtk.Image(icon_name=SETTINGS_APP_ID, pixel_size=128,
+                                css_classes=["icon-dropshadow"]))
+        header.append(Gtk.Label(label="Tablet Mode", css_classes=["title-1"]))
+        header.append(Gtk.Label(label="kohaku-tabletd", css_classes=["dim-label"]))
+        top = Adw.PreferencesGroup()
+        top.add(header)
+        self.add(top)
         project = Adw.PreferencesGroup(title="kohaku-tabletd")
         project.add(Adw.ActionRow(title="Version", subtitle=__version__, use_markup=False))
         link = Adw.ActionRow(title="Source code", subtitle=updates.REPO_URL,
@@ -356,6 +364,10 @@ def _error_window(app, message):
 class SettingsApp(Adw.Application):
     def __init__(self):
         super().__init__(application_id=SETTINGS_APP_ID)
+
+    def do_startup(self):
+        Adw.Application.do_startup(self)
+        Gtk.Window.set_default_icon_name(SETTINGS_APP_ID)
 
     def do_activate(self):
         window = self.get_active_window()

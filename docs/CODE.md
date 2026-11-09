@@ -104,7 +104,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="dmn-trigger"></a>`dmn-trigger` | Trigger API: identifies and records the caller, refuses blocklisted sources with `Error.Blocked`, otherwise acts. |
 | <a id="dmn-settings"></a>`dmn-settings` | Settings over D-Bus: default scale (+ pending flag), temporary zoom, supported scales, blocklist, update status. The default goes to GNOME, the rest to the user config; the zoom is reapplied if active. |
 | <a id="dmn-updates"></a>`dmn-updates` | Update checks in a worker thread: on demand, 60 s after start and hourly once the last check is a day old (if enabled); results are saved and broadcast. |
-| <a id="dmn-notify"></a>`dmn-notify` | Desktop notification once per new version; clicking it opens the release page. |
+| <a id="dmn-notify"></a>`dmn-notify` | Desktop notification (app icon, linked to the desktop entry) once per new version; clicking it opens the release page. |
 | <a id="dmn-run"></a>`dmn-run` | Exports the object, owns the bus name (single instance), handles SIGINT/SIGTERM. |
 
 ## `src/kohaku_tabletd/cli.py`
@@ -127,10 +127,10 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="ui-sources"></a>`ui-sources` | Sources tab: recent calls and the blocklist, updated live from daemon signals. |
 | <a id="ui-recent"></a>`ui-recent` | Recent-call rows (newest first) with a Block/Unblock button; hinge rows have none. |
 | <a id="ui-blocklist"></a>`ui-blocklist` | Blocklist rows with remove buttons and an entry row to add a name. |
-| <a id="ui-about"></a>`ui-about` | About tab: version, GitHub link, update-check switch, status with Check now / Open release. |
+| <a id="ui-about"></a>`ui-about` | About tab: app icon header, version, GitHub link, update-check switch, status with Check now / Open release. |
 | <a id="ui-pages"></a>`ui-pages` | Tab registry; future settings are added here as new `Page` subclasses. |
 | <a id="ui-window"></a>`ui-window` | Window: view switcher over the tabs, toast overlay, forwards daemon signals to tabs. |
-| <a id="ui-app"></a>`ui-app` | Single-instance app; shows an error page if the daemon is unreachable. |
+| <a id="ui-app"></a>`ui-app` | Single-instance app with the app icon as window icon; shows an error page if the daemon is unreachable. |
 
 ## `bin/kohaku-tabletd.in`
 
@@ -148,7 +148,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 
 | ID | What it does |
 |---|---|
-| <a id="app-desktop"></a>`app-desktop` | App-grid entry "Tablet Mode" that opens the settings window. |
+| <a id="app-desktop"></a>`app-desktop` | App-grid entry "Tablet Mode" with the app icon; its name is the app id, which GNOME uses to match the window, notifications and AppStream metadata. |
 
 ## `data/70-kohaku-tabletd.rules`
 
@@ -160,12 +160,13 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 
 | ID | What it does |
 |---|---|
+| <a id="spec-check"></a>`spec-check` | Runs the tests and validates the desktop entry and AppStream metadata during the RPM build. |
 | <a id="spec-post"></a>`spec-post` | Enables the user unit via preset, reloads udev rules and re-triggers switch devices. |
 
 ## `Makefile`
 
 | ID | What it does |
 |---|---|
-| <a id="mk-install"></a>`mk-install` | Installs code, launcher, units, D-Bus activation, udev rule, default config and desktop entry (honours `DESTDIR`). |
+| <a id="mk-install"></a>`mk-install` | Installs code, launcher, units, D-Bus activation, udev rule, default config, desktop entry, AppStream metadata and icons (honours `DESTDIR`). |
 | <a id="mk-check"></a>`mk-check` | Runs the test suite. |
 | <a id="mk-rpm"></a>`mk-rpm` | Builds a source tarball from `HEAD` and the RPM into `./rpmbuild`. |

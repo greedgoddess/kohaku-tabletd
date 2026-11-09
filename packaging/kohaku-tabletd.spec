@@ -1,5 +1,5 @@
 Name:           kohaku-tabletd
-Version:        0.4.0
+Version:        0.5.0
 Release:        1%{?dist}
 Summary:        Tablet-mode aware display scaling with a single D-Bus control daemon
 License:        MIT
@@ -10,6 +10,8 @@ BuildArch:      noarch
 BuildRequires:  make
 BuildRequires:  python3-devel
 BuildRequires:  systemd-rpm-macros
+BuildRequires:  desktop-file-utils
+BuildRequires:  libappstream-glib
 Requires:       python3
 Requires:       python3-gobject
 Requires:       gtk4
@@ -32,8 +34,14 @@ scales, recent trigger sources and a caller blocklist.
 %make_install PREFIX=%{_prefix} SYSCONFDIR=%{_sysconfdir}
 %py_byte_compile %{python3} %{buildroot}%{_prefix}/lib/%{name}
 
+# [doc:spec-check]
 %check
 make check
+desktop-file-validate %{buildroot}%{_datadir}/applications/io.github.greedgoddess.KohakuTabletd.Settings.desktop
+%{_metainfodir}/io.github.greedgoddess.KohakuTabletd.Settings.metainfo.xml
+%{_datadir}/icons/hicolor/scalable/apps/io.github.greedgoddess.KohakuTabletd.Settings.svg
+%{_datadir}/icons/hicolor/symbolic/apps/io.github.greedgoddess.KohakuTabletd.Settings-symbolic.svg
+appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/io.github.greedgoddess.KohakuTabletd.Settings.metainfo.xml
 
 # [doc:spec-post]
 %post
@@ -57,10 +65,16 @@ udevadm trigger --subsystem-match=input --property-match=ID_INPUT_SWITCH=1 >/dev
 %{_datadir}/dbus-1/services/io.github.greedgoddess.KohakuTabletd.service
 %{_udevrulesdir}/70-%{name}.rules
 %{_datadir}/applications/io.github.greedgoddess.KohakuTabletd.Settings.desktop
+%{_metainfodir}/io.github.greedgoddess.KohakuTabletd.Settings.metainfo.xml
+%{_datadir}/icons/hicolor/scalable/apps/io.github.greedgoddess.KohakuTabletd.Settings.svg
+%{_datadir}/icons/hicolor/symbolic/apps/io.github.greedgoddess.KohakuTabletd.Settings-symbolic.svg
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.toml
 
 %changelog
+* Mon Nov 09 2026 greedgoddess <352940295+greedgoddess@users.noreply.github.com> - 0.5.0-1
+- Registered as an app: own icon, AppStream metadata
+
 * Mon Nov 09 2026 greedgoddess <352940295+greedgoddess@users.noreply.github.com> - 0.4.0-1
 - Default scale is GNOME's saved display scale; changing it asks for confirmation
 - Recent callers: identify detached callers (keyd) by their systemd unit

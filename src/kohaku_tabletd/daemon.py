@@ -391,7 +391,7 @@ class Daemon:
         """Desktop notification, once per new version; clicking opens the release page."""
         self._notify_url = url
         params = GLib.Variant("(susssasa{sv}i)", (
-            "Tablet Mode", 0, "software-update-available-symbolic",
+            "Tablet Mode", 0, SETTINGS_APP_ID,
             f"kohaku-tabletd {version} is available",
             f"You have {__version__}. Open the release page to get the new RPM.",
             ["default", "Open release page", "open", "Open release page"],

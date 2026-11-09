@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.greedgoddess.KohakuTabletd.Settings</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Tablet Mode</name>
+  <summary>Display zoom for convertibles in tablet mode</summary>
+  <description>
+    <p>
+      Settings for kohaku-tabletd, which switches between GNOME's display scale
+      and a temporary zoom when a convertible folds into tablet mode or a
+      shortcut is pressed.
+    </p>
+    <ul>
+      <li>Choose the default scale (saved in GNOME) and the temporary zoom</li>
+      <li>See which programs triggered a switch, and block them</li>
+      <li>Get notified when a new release is out</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.greedgoddess.KohakuTabletd.Settings.desktop</launchable>
+  <provides>
+    <binary>kohaku-tabletd</binary>
+  </provides>
+  <developer id="io.github.greedgoddess">
+    <name>greedgoddess</name>
+  </developer>
+  <url type="homepage">https://github.com/greedgoddess/kohaku-tabletd</url>
+  <url type="bugtracker">https://github.com/greedgoddess/kohaku-tabletd/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.5.0" date="2026-11-09">
+      <description><p>Registered as an app with its own icon.</p></description>
+    </release>
+    <release version="0.4.0" date="2026-11-09">
+      <description><p>Default scale is GNOME's saved display scale; better caller identification.</p></description>
+    </release>
+    <release version="0.3.0" date="2026-11-09">
+      <description><p>About tab and update check with notifications.</p></description>
+    </release>
+    <release version="0.2.0" date="2026-11-09">
+      <description><p>Settings window with recent callers and a blocklist.</p></description>
+    </release>
+  </releases>
+</component>

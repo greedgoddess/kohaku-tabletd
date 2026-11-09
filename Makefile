@@ -22,6 +22,12 @@ install:
 	install -Dm 644 data/config.toml $(DESTDIR)$(SYSCONFDIR)/$(NAME)/config.toml
 	install -Dm 644 data/io.github.greedgoddess.KohakuTabletd.Settings.desktop \
 	  $(DESTDIR)$(PREFIX)/share/applications/io.github.greedgoddess.KohakuTabletd.Settings.desktop
+	install -Dm 644 data/io.github.greedgoddess.KohakuTabletd.Settings.metainfo.xml \
+	  $(DESTDIR)$(PREFIX)/share/metainfo/io.github.greedgoddess.KohakuTabletd.Settings.metainfo.xml
+	install -Dm 644 data/icons/io.github.greedgoddess.KohakuTabletd.Settings.svg \
+	  $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/io.github.greedgoddess.KohakuTabletd.Settings.svg
+	install -Dm 644 data/icons/io.github.greedgoddess.KohakuTabletd.Settings-symbolic.svg \
+	  $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps/io.github.greedgoddess.KohakuTabletd.Settings-symbolic.svg
 
 # [doc:mk-check]
 check:
