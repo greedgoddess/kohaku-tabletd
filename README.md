@@ -37,7 +37,10 @@ scale = command(/usr/bin/kohaku-tabletd --active-user toggle)
 
 ## Settings window
 
-"Tablet Mode" in the app grid (or `kohaku-tabletd settings`):
+"Tablet Mode" in the app grid, or `kohaku-tabletd settings`. To open it from
+a key, e.g. by double-tapping the scale key while a single tap keeps toggling,
+see the suggested local setup in [`docs/KEYD.md`](docs/KEYD.md).
+
 
 - **Scaling**: current state, the **default scale** and the **temporary zoom**,
   chosen from the scales GNOME offers. The default scale *is* GNOME's display
