@@ -1,8 +1,8 @@
 # kohaku-tabletd
 
 One control instance for display scaling on a convertible: a user-level daemon
-watches the kernel tablet-mode switch, switches the scale between a laptop and
-a tablet value (default 200 % / 266 %), and exposes a D-Bus API and CLI that
+watches the kernel tablet-mode switch, switches between GNOME's own display scale
+and a temporary zoom (default 266 %), and exposes a D-Bus API and CLI that
 every other trigger (keyd, GNOME shortcuts, scripts) goes through.
 
 Built for GNOME on Fedora (Mutter `DisplayConfig`); other setups can plug in
@@ -39,8 +39,11 @@ scale = command(/usr/bin/kohaku-tabletd --active-user toggle)
 
 "Tablet Mode" in the app grid (or `kohaku-tabletd settings`):
 
-- **Scaling**: current state, the default scale (laptop mode) and the temporary
-  scale (tablet mode and shortcut), chosen from the scales GNOME offers.
+- **Scaling**: current state, the **default scale** and the **temporary zoom**,
+  chosen from the scales GNOME offers. The default scale *is* GNOME's display
+  scale: it is read from GNOME's saved configuration and changed permanently,
+  so GNOME asks you to confirm (same as in GNOME Settings). The daemon switches
+  between that default and the temporary zoom, which is never saved to GNOME.
 - **Sources**: the last 50 trigger calls with their source (e.g. `keyd`) and
   process chain, plus a blocklist. Calls from blocked sources are refused.
 - **About**: version, link to this repository, and the update check (daily
@@ -52,7 +55,7 @@ Further settings get their own tab (`PAGES` in `settings_ui.py`).
 ## Configure
 
 `/etc/kohaku-tabletd/config.toml`, overridden by
-`~/.config/kohaku-tabletd/config.toml`. Keys: `laptop_scale`, `tablet_scale`,
+`~/.config/kohaku-tabletd/config.toml`. Keys: `tablet_scale` (temporary zoom), `laptop_scale` (fallback only),
 `debounce_ms`, `output`, `switch_device`, `apply_command`, `blocklist`,
 `update_check`. The
 settings window writes the user file; for other keys run

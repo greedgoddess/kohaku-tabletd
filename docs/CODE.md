@@ -13,10 +13,10 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 
 | ID | What it does |
 |---|---|
-| <a id="cfg-defaults"></a>`cfg-defaults` | All settings and their defaults (200 % default scale, 266 % temporary scale, 400 ms debounce, empty blocklist, update check on). |
+| <a id="cfg-defaults"></a>`cfg-defaults` | All settings and their defaults (266 % temporary zoom, 200 % fallback default, 400 ms debounce, empty blocklist, update check on). The real default scale is GNOME's own (monitors.xml). |
 | <a id="cfg-paths"></a>`cfg-paths` | Lookup order: `/etc/kohaku-tabletd/config.toml`, then `~/.config/kohaku-tabletd/config.toml`. |
 | <a id="cfg-load"></a>`cfg-load` | Merges files (later wins), coerces types, rejects unknown keys and non-string blocklists. |
-| <a id="cfg-validate"></a>`cfg-validate` | Checks settings changes from D-Bus: scales (1–4), the blocklist (deduped, sorted) and the update-check switch. |
+| <a id="cfg-validate"></a>`cfg-validate` | Checks settings changes from D-Bus: default scale and temporary zoom (1–4), the blocklist (deduped, sorted), the update-check switch. |
 | <a id="cfg-toml"></a>`cfg-toml` | Minimal TOML writer for the flat user config (strings, numbers, lists). |
 | <a id="cfg-save"></a>`cfg-save` | Merges changes into the user config, keeping other keys; writes atomically. |
 
@@ -26,7 +26,15 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 |---|---|
 | <a id="call-proc"></a>`call-proc` | Reads parent PID and argv of a process from `/proc`. |
 | <a id="call-name"></a>`call-name` | Readable process name; for interpreters and shells, the script they run. |
-| <a id="call-identify"></a>`call-identify` | Walks up from the caller past our own CLI and `sh -c` wrappers; returns the source (e.g. `keyd`) and the chain. |
+| <a id="call-unit"></a>`call-unit` | Reads the caller's systemd unit from its cgroup and turns it into a source name (`keyd.service` → `keyd`, `app-gnome-<app id>-<n>.scope` → app id). |
+| <a id="call-identify"></a>`call-identify` | Walks up from the caller past our own CLI, `sh -c` wrappers and launchers; if that leads nowhere (keyd detaches its commands), the unit names the source. |
+
+## `src/kohaku_tabletd/monitorsxml.py`
+
+| ID | What it does |
+|---|---|
+| <a id="mx-paths"></a>`mx-paths` | Where GNOME keeps saved display configs: `~/.config/monitors.xml`, then `/etc/xdg/monitors.xml`. |
+| <a id="mx-scale"></a>`mx-scale` | Finds the saved configuration for exactly the connected monitors and returns the panel's scale. |
 
 ## `src/kohaku_tabletd/fmt.py`
 
@@ -74,8 +82,9 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 
 | ID | What it does |
 |---|---|
-| <a id="mut-state"></a>`mut-state` | Reads `GetCurrentState` and flattens it into logical monitors and current mode ids. |
-| <a id="mut-apply"></a>`mut-apply` | Applies the new scale via `ApplyMonitorsConfig` as a temporary config (no "keep changes?" dialog; the daemon reapplies at login), keeping modes, transforms, primary and layout mode; no-op if unchanged. |
+| <a id="mut-state"></a>`mut-state` | Reads `GetCurrentState` and flattens it into logical monitors, current mode ids and monitor specs. |
+| <a id="mut-apply"></a>`mut-apply` | Applies a scale via `ApplyMonitorsConfig`, keeping modes, transforms, primary and layout mode. Temporary for switching (no dialog, no-op if unchanged); persistent for the default (GNOME's keep-changes dialog, saved on confirm). |
+| <a id="mut-default"></a>`mut-default` | GNOME's saved scale for the panel in the current monitor setup, via `monitorsxml`. |
 | <a id="mut-supported"></a>`mut-supported` | Lists the scales Mutter offers for the target monitor (feeds the settings dropdowns). |
 
 ## `src/kohaku_tabletd/daemon.py`
@@ -83,7 +92,9 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | ID | What it does |
 |---|---|
 | <a id="dmn-iface"></a>`dmn-iface` | D-Bus interface: trigger methods (`Toggle`, `SetMode`, `Auto`, `Reapply`), `Status`, `GetSettings`/`SetSettings`, `RecentCalls`, `CheckForUpdates`; signals `ModeChanged`, `SettingsChanged`, `CallRecorded`. |
-| <a id="dmn-apply"></a>`dmn-apply` | Applies the effective mode's scale via Mutter or `apply_command`, then emits `ModeChanged`. The only place a scale is set. |
+| <a id="dmn-apply"></a>`dmn-apply` | Applies the effective mode's scale (laptop: GNOME's default, tablet: temporary zoom) via Mutter or `apply_command`, then emits `ModeChanged`. |
+| <a id="dmn-default"></a>`dmn-default` | Reads the default from GNOME (fallback `laptop_scale`); changing it applies a persistent config and marks it pending until GNOME's dialog is answered. |
+| <a id="dmn-display-watch"></a>`dmn-display-watch` | Watches Mutter's `MonitorsChanged` and `monitors.xml`: clears the pending default (confirmed or reverted), refreshes listeners, and restores the temporary zoom if GNOME saved a config while in tablet mode. |
 | <a id="dmn-record"></a>`dmn-record` | Keeps the last 50 triggers in memory and emits `CallRecorded`. |
 | <a id="dmn-identify"></a>`dmn-identify` | Resolves a D-Bus sender to its PID, then to source and chain via `callers`. |
 | <a id="dmn-switch-attach"></a>`dmn-switch-attach` | Opens the switch, records its state, watches the fd; retries every 10 s if missing. |
@@ -91,7 +102,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="dmn-debounce"></a>`dmn-debounce` | After the hinge settles, reads the real state once; on a transition records it (source `hinge`) and applies. |
 | <a id="dmn-dbus-methods"></a>`dmn-dbus-methods` | Dispatches method calls; invalid input, file and apply failures become D-Bus errors. |
 | <a id="dmn-trigger"></a>`dmn-trigger` | Trigger API: identifies and records the caller, refuses blocklisted sources with `Error.Blocked`, otherwise acts. |
-| <a id="dmn-settings"></a>`dmn-settings` | Settings over D-Bus: current values, supported scales and update status; changes are validated, saved, broadcast, and reapplied if a scale changed. |
+| <a id="dmn-settings"></a>`dmn-settings` | Settings over D-Bus: default scale (+ pending flag), temporary zoom, supported scales, blocklist, update status. The default goes to GNOME, the rest to the user config; the zoom is reapplied if active. |
 | <a id="dmn-updates"></a>`dmn-updates` | Update checks in a worker thread: on demand, 60 s after start and hourly once the last check is a day old (if enabled); results are saved and broadcast. |
 | <a id="dmn-notify"></a>`dmn-notify` | Desktop notification once per new version; clicking it opens the release page. |
 | <a id="dmn-run"></a>`dmn-run` | Exports the object, owns the bus name (single instance), handles SIGINT/SIGTERM. |
@@ -111,7 +122,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 |---|---|
 | <a id="ui-client"></a>`ui-client` | D-Bus proxy to the daemon (activation starts it if needed). |
 | <a id="ui-page-base"></a>`ui-page-base` | Base class for a tab: daemon client, error toasts, signal hook. |
-| <a id="ui-scaling"></a>`ui-scaling` | Scaling tab: current mode, default and temporary scale. |
+| <a id="ui-scaling"></a>`ui-scaling` | Scaling tab: current mode, GNOME's default scale (shows when GNOME is waiting for confirmation) and the temporary zoom. |
 | <a id="ui-scale-rows"></a>`ui-scale-rows` | Dropdowns of supported scales, or spin rows when none are reported. |
 | <a id="ui-sources"></a>`ui-sources` | Sources tab: recent calls and the blocklist, updated live from daemon signals. |
 | <a id="ui-recent"></a>`ui-recent` | Recent-call rows (newest first) with a Block/Unblock button; hinge rows have none. |

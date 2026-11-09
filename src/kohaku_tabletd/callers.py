@@ -1,10 +1,13 @@
-"""Who called the trigger API: walk the caller's process chain in /proc."""
+"""Who called the trigger API: the caller's process chain in /proc, with the
+systemd unit (cgroup) as fallback for detached callers like keyd's commands."""
 
 import os
+import re
 
 SHELLS = {"sh", "bash", "dash", "zsh", "fish"}
 INTERPRETERS = ("python", "perl", "node", "ruby")
 OWN = ("kohaku-tabletd", "kohaku_tabletd")
+PASS_THROUGH = {"systemd", "systemd-run"}  # launchers, never the real source
 
 
 # [doc:call-proc]
@@ -41,19 +44,50 @@ def _is_wrapper(argv):
     return os.path.basename(argv[0]).lstrip("-") in SHELLS and argv[1:2] == ["-c"]
 
 
+# [doc:call-unit]
+def read_unit(pid, proc="/proc"):
+    """Last component of the process's cgroup v2 path, e.g. "keyd.service"."""
+    try:
+        with open(f"{proc}/{pid}/cgroup") as fh:
+            for line in fh:
+                if line.startswith("0::"):
+                    return line.strip()[3:].rstrip("/").rsplit("/", 1)[-1] or None
+    except OSError:
+        pass
+    return None
+
+
+def unit_source(unit):
+    """Source name from a unit: "keyd.service" -> "keyd",
+    "app-gnome-org.gnome.Ptyxis-4242.scope" -> "org.gnome.Ptyxis"."""
+    name = unit.replace("\\x2d", "-")
+    name = re.sub(r"\.(service|scope|slice)$", "", name)
+    name = re.sub(r"@[^@]*$", "", name)
+    if name.startswith("app-"):
+        name = re.sub(r"^app-(gnome-|flatpak-|kde-)?", "", name)
+        name = re.sub(r"-\d+$", "", name)
+    return name or unit
+
+
 # [doc:call-identify]
 def identify(pid, proc="/proc", max_depth=12):
-    """(source, chain). source is the first ancestor that is neither our own
-    CLI nor a `sh -c` wrapper; chain reads from the source down to the caller."""
+    """(source, chain). source is the first ancestor that is not our own CLI,
+    a `sh -c` wrapper or a launcher. If the chain ends without one (the caller
+    was detached, e.g. by keyd), the caller's systemd unit names the source."""
     chain = []
-    while pid > 1 and len(chain) < max_depth:
-        info = read_process(pid, proc)
+    current = pid
+    while current > 1 and len(chain) < max_depth:
+        info = read_process(current, proc)
         if info is None:
             break
         ppid, argv = info
         name = process_name(argv)
         chain.append(name)
-        if not any(own in name for own in OWN) and not _is_wrapper(argv):
+        skip = any(own in name for own in OWN) or _is_wrapper(argv) or name in PASS_THROUGH
+        if not skip:
             return name, " › ".join(reversed(chain))
-        pid = ppid
+        current = ppid
+    unit = read_unit(pid, proc)
+    if unit:
+        return unit_source(unit), " › ".join([unit] + list(reversed(chain)))
     return (chain[-1] if chain else "unknown"), " › ".join(reversed(chain))

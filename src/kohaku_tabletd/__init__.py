@@ -1,6 +1,6 @@
 """kohaku-tabletd: tablet-mode aware display scaling with one D-Bus control point."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # [doc:pkg-bus-names]
 BUS_NAME = "io.github.greedgoddess.KohakuTabletd"

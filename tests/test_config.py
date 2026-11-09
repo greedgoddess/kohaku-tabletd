@@ -34,7 +34,8 @@ class SettingsWriteTest(unittest.TestCase):
         clean = config.validate_update({"tablet_scale": 2.5, "blocklist": [" keyd", "keyd", "", "x"]})
         self.assertEqual(clean, {"tablet_scale": 2.5, "blocklist": ["keyd", "x"]})
         self.assertEqual(config.validate_update({"update_check": False}), {"update_check": False})
-        for bad in ({"debounce_ms": 10}, {"laptop_scale": 9.0}, {"blocklist": "keyd"},
+        self.assertEqual(config.validate_update({"default_scale": 2.4}), {"default_scale": 2.4})
+        for bad in ({"debounce_ms": 10}, {"default_scale": 9.0}, {"laptop_scale": 2.0}, {"blocklist": "keyd"},
                     {"update_check": "no"}):
             with self.assertRaises(ValueError):
                 config.validate_update(bad)

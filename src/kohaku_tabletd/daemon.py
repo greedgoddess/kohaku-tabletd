@@ -11,12 +11,13 @@ import time
 from gi.repository import Gio, GLib
 
 from . import (BUS_NAME, HINGE_SOURCE, INTERFACE, OBJECT_PATH, SETTINGS_APP_ID, __version__,
-               callers, config, mutter, state, switch, updates)
+               callers, config, monitorsxml, mutter, state, switch, updates)
 
 log = logging.getLogger("kohaku-tabletd")
 TRIGGERS = ("Toggle", "SetMode", "Auto", "Reapply")
 RECENT_MAX = 50
 UPDATE_INTERVAL_MS = 23 * 3600 * 1000  # "daily", with slack for the hourly timer
+USER_MONITORS_XML = monitorsxml.config_paths()[0]
 NOTIFY = ("org.freedesktop.Notifications", "/org/freedesktop/Notifications",
           "org.freedesktop.Notifications")
 
@@ -75,12 +76,16 @@ class Daemon:
         self.update.update(updates.load_state())
         self._update_running = False
         self._notify_id = 0
+        self._display_timer = 0
+        self._saved_config_changed = False
+        self._xml_monitor = None
+        self._default_pending = None  # (scale, monotonic time) while GNOME's dialog is open
 
     # [doc:dmn-apply]
     def apply(self):
         """Apply the scale for the effective mode. Raises ApplyError."""
         mode = self.state.effective
-        target = self.cfg.tablet_scale if mode == state.TABLET else self.cfg.laptop_scale
+        target = self.cfg.tablet_scale if mode == state.TABLET else self.default_scale()
         try:
             if self.cfg.apply_command:
                 argv = [arg.replace("{scale}", f"{target:g}").replace("{mode}", mode)
@@ -97,6 +102,67 @@ class Daemon:
         log.info("mode=%s scale=%g manual=%s", mode, scale, self.state.manual)
         self._emit("ModeChanged", GLib.Variant("(sdb)", (mode, scale, self.state.manual)))
         return mode
+
+    # [doc:dmn-default]
+    def default_scale(self):
+        """GNOME's saved scale for the panel; laptop_scale only as a fallback."""
+        if not self.cfg.apply_command:
+            try:
+                saved = mutter.default_scale(self.cfg.output)
+            except (GLib.Error, mutter.MutterError) as exc:
+                log.warning("cannot read GNOME's saved scale: %s", exc)
+                saved = None
+            if saved is not None:
+                return saved
+        return self.cfg.laptop_scale
+
+    def set_default_scale(self, scale):
+        """Change GNOME's saved scale. GNOME shows its keep-changes dialog and
+        only saves on confirm; the monitors.xml watch picks the result up."""
+        if self.cfg.apply_command:
+            config.save_user({"laptop_scale": scale})
+            self.cfg.laptop_scale = scale
+            if self.state.effective == state.LAPTOP:
+                self._apply_logged()
+            return
+        try:
+            self.scale = mutter.apply_scale(scale, self.cfg.output, persistent=True)
+        except (GLib.Error, mutter.MutterError) as exc:
+            raise ApplyError(f"default scale {scale:g}: {exc}") from exc
+        self._default_pending = (scale, time.monotonic())
+        log.info("default scale %g requested, waiting for GNOME's confirmation", scale)
+
+    # [doc:dmn-display-watch]
+    def _on_display_event(self, saved_config_changed):
+        """Mutter's MonitorsChanged or a write to monitors.xml (debounced)."""
+        self._saved_config_changed |= saved_config_changed
+        pending = self._default_pending
+        # Confirmed (monitors.xml written) or reverted (a later MonitorsChanged):
+        # either way GNOME's saved value is the truth again.
+        if pending and (saved_config_changed or time.monotonic() - pending[1] > 2):
+            self._default_pending = None
+        if self._display_timer:
+            GLib.source_remove(self._display_timer)
+        self._display_timer = GLib.timeout_add(500, self._display_settled)
+
+    def _display_settled(self):
+        """Refresh listeners. If GNOME saved a new config while in tablet mode
+        (default confirmed), put the temporary zoom back."""
+        self._display_timer = 0
+        reapply = self._saved_config_changed and self.state.effective == state.TABLET
+        self._saved_config_changed = False
+        self._emit_settings()
+        if reapply:
+            self._apply_logged()
+        return GLib.SOURCE_REMOVE
+
+    def _watch_display(self):
+        self.bus.signal_subscribe(None, mutter.IFACE, "MonitorsChanged", mutter.PATH, None,
+                                  Gio.DBusSignalFlags.NONE,
+                                  lambda *_args: self._on_display_event(False))
+        self._xml_monitor = Gio.File.new_for_path(USER_MONITORS_XML).monitor_file(
+            Gio.FileMonitorFlags.NONE, None)
+        self._xml_monitor.connect("changed", lambda *_args: self._on_display_event(True))
 
     def _apply_logged(self):
         try:
@@ -250,7 +316,9 @@ class Daemon:
             except (GLib.Error, mutter.MutterError) as exc:
                 log.warning("cannot read supported scales: %s", exc)
         return {
-            "laptop_scale": GLib.Variant("d", self.cfg.laptop_scale),
+            "default_scale": GLib.Variant("d", self._default_pending[0] if self._default_pending
+                                          else self.default_scale()),
+            "default_pending": GLib.Variant("b", self._default_pending is not None),
             "tablet_scale": GLib.Variant("d", self.cfg.tablet_scale),
             "blocklist": GLib.Variant("as", list(self.cfg.blocklist)),
             "supported_scales": GLib.Variant("ad", supported),
@@ -266,14 +334,19 @@ class Daemon:
         self._emit("SettingsChanged", GLib.Variant("(a{sv})", (self.settings(),)))
 
     def set_settings(self, changes):
-        """Validate, persist to the user config, adopt, reapply if a scale changed."""
+        """Validate; the default scale goes to GNOME, everything else to the
+        user config. Reapplies if the temporary zoom changed while active."""
         update = config.validate_update(changes)
-        config.save_user(update)
-        scales_before = (self.cfg.laptop_scale, self.cfg.tablet_scale)
+        default = update.pop("default_scale", None)
+        if update:
+            config.save_user(update)
+        tablet_before = self.cfg.tablet_scale
         for key, value in update.items():
             setattr(self.cfg, key, value)
+        if default is not None:
+            self.set_default_scale(default)
         self._emit_settings()
-        if (self.cfg.laptop_scale, self.cfg.tablet_scale) != scales_before:
+        if self.cfg.tablet_scale != tablet_before and self.state.effective == state.TABLET:
             self._apply_logged()
         if update.get("update_check"):
             self._periodic_update()
@@ -347,6 +420,7 @@ class Daemon:
         self.bus.register_object(OBJECT_PATH, node.interfaces[0], self._on_call, None, None)
         Gio.bus_own_name_on_connection(self.bus, BUS_NAME, Gio.BusNameOwnerFlags.DO_NOT_QUEUE,
                                        self._on_acquired, self._on_lost)
+        self._watch_display()
         self.bus.signal_subscribe(None, NOTIFY[2], "ActionInvoked", NOTIFY[1], None,
                                   Gio.DBusSignalFlags.NONE, self._on_notify_action)
         GLib.timeout_add_seconds(60, self._first_update_check)

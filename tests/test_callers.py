@@ -11,13 +11,16 @@ class CallersTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.proc = self.tmp.name
 
-    def add(self, pid, ppid, *argv, comm=None):
+    def add(self, pid, ppid, *argv, comm=None, cgroup=None):
         path = os.path.join(self.proc, str(pid))
         os.makedirs(path)
         with open(os.path.join(path, "stat"), "w") as fh:
             fh.write(f"{pid} ({comm or os.path.basename(argv[0] if argv else 'kthread')}) S {ppid} 1 1 0\n")
         with open(os.path.join(path, "cmdline"), "wb") as fh:
             fh.write(b"".join(a.encode() + b"\0" for a in argv))
+        if cgroup:
+            with open(os.path.join(path, "cgroup"), "w") as fh:
+                fh.write(f"0::{cgroup}\n")
 
     def test_keyd_through_shell_and_cli(self):
         self.add(100, 1, "/usr/bin/keyd")
@@ -34,6 +37,28 @@ class CallersTest(unittest.TestCase):
         self.add(50, 1, "-bash")
         self.add(70, 50, "/usr/bin/python3", "/usr/bin/kohaku-tabletd", "toggle")
         self.assertEqual(callers.identify(70, self.proc), ("bash", "bash › kohaku-tabletd"))
+
+    def test_detached_keyd_command_uses_cgroup(self):
+        # keyd double-forks: the CLI ends up a child of PID 1, still in keyd.service
+        self.add(300, 1, "/usr/bin/python3", "/usr/bin/kohaku-tabletd", "--active-user", "toggle",
+                 cgroup="/system.slice/keyd.service")
+        self.assertEqual(callers.identify(300, self.proc), ("keyd", "keyd.service › kohaku-tabletd"))
+
+    def test_systemd_launcher_falls_back_to_app_scope(self):
+        self.add(40, 1, "/usr/lib/systemd/systemd", "--user")
+        self.add(41, 40, "/usr/bin/python3", "/usr/bin/kohaku-tabletd", "toggle",
+                 cgroup="/user.slice/user-1000.slice/user@1000.service/app.slice/"
+                        "app-gnome-org.gnome.Settings\\x2dShortcut-4242.scope")
+        source, chain = callers.identify(41, self.proc)
+        self.assertEqual(source, "org.gnome.Settings-Shortcut")
+        self.assertTrue(chain.endswith("systemd › kohaku-tabletd"))
+
+    def test_unit_source(self):
+        self.assertEqual(callers.unit_source("keyd.service"), "keyd")
+        self.assertEqual(callers.unit_source("app-gnome-org.gnome.Ptyxis-4242.scope"), "org.gnome.Ptyxis")
+        self.assertEqual(callers.unit_source("app-flatpak-com.example.App-77.scope"), "com.example.App")
+        self.assertEqual(callers.unit_source("getty@tty2.service"), "getty")
+        self.assertEqual(callers.unit_source("session-3.scope"), "session-3")
 
     def test_process_names(self):
         self.assertEqual(callers.process_name(["python3", "-m", "kohaku_tabletd"]), "kohaku_tabletd")

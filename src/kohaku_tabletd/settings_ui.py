@@ -71,8 +71,10 @@ class Page(Adw.PreferencesPage):
 
 
 SCALE_ROWS = (
-    ("laptop_scale", "Default scale", "Laptop mode, and whenever the hinge opens again"),
-    ("tablet_scale", "Temporary scale", "Tablet mode, and when switched with the shortcut"),
+    ("default_scale", "Default scale",
+     "GNOME's display scale, used in laptop mode. Saved permanently; GNOME asks to confirm"),
+    ("tablet_scale", "Temporary zoom",
+     "Used in tablet mode and when switched with the shortcut; never saved to GNOME"),
 )
 
 
@@ -84,11 +86,12 @@ class ScalingPage(Page):
         super().__init__(client, toast)
         self._updating = False
         self.rows = {}
+        self.subtitles = {}
         current = Adw.PreferencesGroup(title="Current state")
         self.status_row = Adw.ActionRow(title="Mode", use_markup=False)
         current.add(self.status_row)
         self.add(current)
-        self.scale_group = Adw.PreferencesGroup(title="Scale", description="Changes apply immediately.")
+        self.scale_group = Adw.PreferencesGroup(title="Scale")
         self.add(self.scale_group)
         self.refresh()
 
@@ -123,6 +126,7 @@ class ScalingPage(Page):
                 row.set_digits(2)
                 row.connect("notify::value", self._on_value, key)
             self.rows[key] = (row, supported)
+            self.subtitles[key] = subtitle
             self.scale_group.add(row)
 
     def _show_settings(self, settings):
@@ -133,6 +137,10 @@ class ScalingPage(Page):
                     row.set_selected(fmt.nearest_index(supported, settings[key]))
                 else:
                     row.set_value(settings[key] * 100)
+            pending = settings.get("default_pending")
+            self.rows["default_scale"][0].set_subtitle(
+                "Waiting for confirmation in GNOME’s dialog…" if pending
+                else self.subtitles["default_scale"])
         finally:
             self._updating = False
 

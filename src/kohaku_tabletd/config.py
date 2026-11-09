@@ -6,14 +6,15 @@ import tomllib
 from dataclasses import dataclass, field
 
 SYSTEM_PATH = "/etc/kohaku-tabletd/config.toml"
-EDITABLE = ("laptop_scale", "tablet_scale", "blocklist", "update_check")  # changeable over D-Bus
+EDITABLE = ("default_scale", "tablet_scale", "blocklist", "update_check")
+NOT_IN_FILE = ("default_scale",)  # lives in GNOME's monitors.xml, not our config  # changeable over D-Bus
 
 
 # [doc:cfg-defaults]
 @dataclass
 class Config:
-    laptop_scale: float = 2.0    # "default scale" in the settings window
-    tablet_scale: float = 2.6667  # "temporary scale": tablet mode and shortcut override
+    laptop_scale: float = 2.0    # fallback when GNOME has no saved scale (or apply_command)
+    tablet_scale: float = 2.6667  # temporary zoom: tablet mode and shortcut override
     debounce_ms: int = 400
     output: str = ""         # connector, e.g. "eDP-1"; empty = built-in panel
     switch_device: str = ""  # e.g. "/dev/input/event5"; empty = auto-detect
