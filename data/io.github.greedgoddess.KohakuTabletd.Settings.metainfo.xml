@@ -28,6 +28,9 @@
   <url type="bugtracker">https://github.com/greedgoddess/kohaku-tabletd/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.6.0" date="2026-11-09">
+      <description><p>Integrations for docks, launchers and desktops in tablet mode, starting with Dash to Dock.</p></description>
+    </release>
     <release version="0.5.1" date="2026-11-09">
       <description><p>Recent calls explain how to trigger a call.</p></description>
     </release>

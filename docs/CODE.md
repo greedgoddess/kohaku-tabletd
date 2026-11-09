@@ -29,6 +29,22 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="call-unit"></a>`call-unit` | Reads the caller's systemd unit from its cgroup and turns it into a source name (`keyd.service` → `keyd`, `app-gnome-<app id>-<n>.scope` → app id). |
 | <a id="call-identify"></a>`call-identify` | Walks up from the caller past our own CLI, `sh -c` wrappers and launchers; if that leads nowhere (keyd detaches its commands), the unit names the source. |
 
+## `src/kohaku_tabletd/integration.py`
+
+| ID | What it does |
+|---|---|
+| <a id="int-base"></a>`int-base` | Plugin base class: id, title, description, category; `available()`, `enter()` returns what `leave()` restores. |
+| <a id="int-gsettings"></a>`int-gsettings` | Ready-made plugin for GSettings keys, incl. schemas shipped inside extensions; saves and restores the previous values. |
+| <a id="int-store"></a>`int-store` | Active integrations and their saved values in `~/.local/state/kohaku-tabletd/integrations.json`, so a crash still restores later. |
+| <a id="int-discover"></a>`int-discover` | Finds plugins in the package and in `~/.local/share/kohaku-tabletd/integrations/`; broken ones are logged and skipped, packaged ids win. |
+| <a id="int-manager"></a>`int-manager` | Makes each integration active exactly when folded and enabled; failures are isolated per integration and reported. |
+
+## `src/kohaku_tabletd/integrations/dash_to_dock.py`
+
+| ID | What it does |
+|---|---|
+| <a id="d2d-integration"></a>`d2d-integration` | Dash to Dock / Ubuntu Dock: sets `dock-fixed` in tablet mode (always visible, reserves its space). Built in, off until enabled. |
+
 ## `src/kohaku_tabletd/monitorsxml.py`
 
 | ID | What it does |
@@ -97,6 +113,7 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="dmn-display-watch"></a>`dmn-display-watch` | Watches Mutter's `MonitorsChanged` and `monitors.xml`: clears the pending default (confirmed or reverted), refreshes listeners, and restores the temporary zoom if GNOME saved a config while in tablet mode. |
 | <a id="dmn-record"></a>`dmn-record` | Keeps the last 50 triggers in memory and emits `CallRecorded`. |
 | <a id="dmn-identify"></a>`dmn-identify` | Resolves a D-Bus sender to its PID, then to source and chain via `callers`. |
+| <a id="dmn-integrations"></a>`dmn-integrations` | Syncs integrations with the hinge on start, on hinge changes and when toggled; restores them on stop/logout. |
 | <a id="dmn-switch-attach"></a>`dmn-switch-attach` | Opens the switch, records its state, watches the fd; retries every 10 s if missing. |
 | <a id="dmn-switch-event"></a>`dmn-switch-event` | On switch events, (re)starts the debounce timer; on device loss, reattaches. |
 | <a id="dmn-debounce"></a>`dmn-debounce` | After the hinge settles, reads the real state once; on a transition records it (source `hinge`) and applies. |
@@ -124,11 +141,12 @@ Each `# [doc:<id>]` comment in the code points here (`docs/CODE.md#<id>`).
 | <a id="ui-page-base"></a>`ui-page-base` | Base class for a tab: daemon client, error toasts, opening links, signal hook. |
 | <a id="ui-scaling"></a>`ui-scaling` | Scaling tab: current mode, GNOME's default scale (shows when GNOME is waiting for confirmation) and the temporary zoom. |
 | <a id="ui-scale-rows"></a>`ui-scale-rows` | Dropdowns of supported scales, or spin rows when none are reported. |
+| <a id="ui-integrations"></a>`ui-integrations` | Integrations tab: a switch per installed integration, grouped by category, with notes when unavailable and a "How to add" link. |
 | <a id="ui-sources"></a>`ui-sources` | Sources tab: recent calls (with a hint and a "How to trigger" link to `docs/TRIGGERS.md`) and the blocklist, updated live from daemon signals. |
 | <a id="ui-recent"></a>`ui-recent` | Recent-call rows (newest first) with a Block/Unblock button; hinge rows have none. |
 | <a id="ui-blocklist"></a>`ui-blocklist` | Blocklist rows with remove buttons and an entry row to add a name. |
 | <a id="ui-about"></a>`ui-about` | About tab: app icon header, version, GitHub link, update-check switch, status with Check now / Open release. |
-| <a id="ui-pages"></a>`ui-pages` | Tab registry; future settings are added here as new `Page` subclasses. |
+| <a id="ui-pages"></a>`ui-pages` | Tab registry (Scaling, Integrations, Sources, About); future settings are added here as new `Page` subclasses. |
 | <a id="ui-window"></a>`ui-window` | Window: view switcher over the tabs, toast overlay, forwards daemon signals to tabs. |
 | <a id="ui-app"></a>`ui-app` | Single-instance app with the app icon as window icon; shows an error page if the daemon is unreachable. |
 

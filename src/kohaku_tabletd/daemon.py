@@ -11,7 +11,7 @@ import time
 from gi.repository import Gio, GLib
 
 from . import (BUS_NAME, HINGE_SOURCE, INTERFACE, OBJECT_PATH, SETTINGS_APP_ID, __version__,
-               callers, config, monitorsxml, mutter, state, switch, updates)
+               callers, config, integration, monitorsxml, mutter, state, switch, updates)
 
 log = logging.getLogger("kohaku-tabletd")
 TRIGGERS = ("Toggle", "SetMode", "Auto", "Reapply")
@@ -80,6 +80,7 @@ class Daemon:
         self._saved_config_changed = False
         self._xml_monitor = None
         self._default_pending = None  # (scale, monotonic time) while GNOME's dialog is open
+        self.integrations = integration.IntegrationManager(cfg.integrations)
 
     # [doc:dmn-apply]
     def apply(self):
@@ -220,7 +221,14 @@ class Daemon:
     def _retry_switch(self):
         if self.attach_switch():
             self._apply_logged()
+            self.sync_integrations()
         return GLib.SOURCE_REMOVE
+
+    # [doc:dmn-integrations]
+    def sync_integrations(self):
+        """Integrations follow the hinge (folded = tablet), not the zoom toggle."""
+        if self.integrations.sync(self.state.physical == state.TABLET):
+            self._emit_settings()
 
     # [doc:dmn-switch-event]
     def _on_switch(self, _fd, condition):
@@ -251,6 +259,7 @@ class Daemon:
         if self.state.hinge(physical):
             self.record(f"Hinge({physical})", HINGE_SOURCE, "tablet-mode switch", False)
             self._apply_logged()
+            self.sync_integrations()
         return GLib.SOURCE_REMOVE
 
     # [doc:dmn-dbus-methods]
@@ -323,6 +332,14 @@ class Daemon:
             "blocklist": GLib.Variant("as", list(self.cfg.blocklist)),
             "supported_scales": GLib.Variant("ad", supported),
             "update_check": GLib.Variant("b", self.cfg.update_check),
+            "integrations": GLib.Variant("aa{sv}", [
+                {"id": GLib.Variant("s", row["id"]), "title": GLib.Variant("s", row["title"]),
+                 "description": GLib.Variant("s", row["description"]),
+                 "category": GLib.Variant("s", row["category"]),
+                 "enabled": GLib.Variant("b", row["enabled"]),
+                 "available": GLib.Variant("b", row["available"]),
+                 "active": GLib.Variant("b", row["active"]), "note": GLib.Variant("s", row["note"])}
+                for row in self.integrations.describe()]),
             "update_state": GLib.Variant("s", self.update["state"]),
             "update_latest": GLib.Variant("s", self.update["latest"]),
             "update_url": GLib.Variant("s", self.update["url"]),
@@ -345,6 +362,9 @@ class Daemon:
             setattr(self.cfg, key, value)
         if default is not None:
             self.set_default_scale(default)
+        if "integrations" in update:
+            self.integrations.enabled = set(update["integrations"])
+            self.integrations.sync(self.state.physical == state.TABLET)
         self._emit_settings()
         if self.cfg.tablet_scale != tablet_before and self.state.effective == state.TABLET:
             self._apply_logged()
@@ -433,6 +453,7 @@ class Daemon:
     def _on_acquired(self, _conn, _name):
         self.attach_switch()
         self._apply_logged()
+        self.sync_integrations()
 
     def _on_lost(self, _conn, name):
         log.error("could not own %s; is another instance running?", name)
@@ -440,6 +461,7 @@ class Daemon:
         self.loop.quit()
 
     def _quit(self):
+        self.integrations.sync(False)  # logout/stop: give the desktop its settings back
         self.loop.quit()
         return GLib.SOURCE_REMOVE
 

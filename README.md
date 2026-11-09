@@ -50,6 +50,9 @@ Software), or run `kohaku-tabletd settings`.
   scale: it is read from GNOME's saved configuration and changed permanently,
   so GNOME asks you to confirm (same as in GNOME Settings). The daemon switches
   between that default and the temporary zoom, which is never saved to GNOME.
+- **Integrations**: extras while the device is folded, each with its own
+  switch, e.g. keeping Dash to Dock visible (built in, off by default). Open for other docks,
+  launchers and desktops, see [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md).
 - **Sources**: the last 50 trigger calls with their source (e.g. `keyd`) and
   process chain, plus a blocklist. Calls from blocked sources are refused.
 - **About**: version, link to this repository, and the update check (daily
@@ -63,7 +66,7 @@ Further settings get their own tab (`PAGES` in `settings_ui.py`).
 `/etc/kohaku-tabletd/config.toml`, overridden by
 `~/.config/kohaku-tabletd/config.toml`. Keys: `tablet_scale` (temporary zoom), `laptop_scale` (fallback only),
 `debounce_ms`, `output`, `switch_device`, `apply_command`, `blocklist`,
-`update_check`. The
+`update_check`, `integrations` (enabled ids). The
 settings window writes the user file; for other keys run
 `systemctl --user restart kohaku-tabletd` after editing.
 

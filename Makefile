@@ -11,6 +11,8 @@ RPMDIR     := $(CURDIR)/rpmbuild
 install:
 	install -d $(DESTDIR)$(LIBDIR)/kohaku_tabletd
 	install -m 644 src/kohaku_tabletd/*.py $(DESTDIR)$(LIBDIR)/kohaku_tabletd/
+	install -d $(DESTDIR)$(LIBDIR)/kohaku_tabletd/integrations
+	install -m 644 src/kohaku_tabletd/integrations/*.py $(DESTDIR)$(LIBDIR)/kohaku_tabletd/integrations/
 	install -d $(DESTDIR)$(PREFIX)/bin
 	sed 's|@LIBDIR@|$(LIBDIR)|' bin/$(NAME).in > $(DESTDIR)$(PREFIX)/bin/$(NAME)
 	chmod 755 $(DESTDIR)$(PREFIX)/bin/$(NAME)

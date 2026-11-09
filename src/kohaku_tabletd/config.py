@@ -6,7 +6,7 @@ import tomllib
 from dataclasses import dataclass, field
 
 SYSTEM_PATH = "/etc/kohaku-tabletd/config.toml"
-EDITABLE = ("default_scale", "tablet_scale", "blocklist", "update_check")
+EDITABLE = ("default_scale", "tablet_scale", "blocklist", "update_check", "integrations")
 NOT_IN_FILE = ("default_scale",)  # lives in GNOME's monitors.xml, not our config  # changeable over D-Bus
 
 
@@ -21,6 +21,7 @@ class Config:
     apply_command: str = ""  # replaces the Mutter backend; {scale} and {mode} are substituted
     blocklist: list = field(default_factory=list)  # caller sources the trigger API refuses
     update_check: bool = True  # daily check against GitHub releases, with a notification
+    integrations: list = field(default_factory=list)  # enabled tablet-mode integration ids
 
 
 # [doc:cfg-paths]
@@ -72,7 +73,7 @@ def validate_update(update):
                 raise ValueError("update_check must be true or false")
         else:
             if not isinstance(value, (list, tuple)) or not all(isinstance(v, str) for v in value):
-                raise ValueError("blocklist must be a list of names")
+                raise ValueError(f"{key} must be a list of names")
             value = sorted({v.strip() for v in value if v.strip()})
         clean[key] = value
     return clean

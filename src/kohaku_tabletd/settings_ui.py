@@ -13,7 +13,7 @@ from . import (BUS_NAME, HINGE_SOURCE, INTERFACE, OBJECT_PATH, SETTINGS_APP_ID, 
                __version__, fmt, updates)
 
 RECENT_MAX = 50
-VARIANT_TYPES = {"blocklist": "as", "update_check": "b"}  # everything else is a scale ("d")
+VARIANT_TYPES = {"blocklist": "as", "update_check": "b", "integrations": "as"}  # everything else is a scale ("d")
 
 
 # [doc:ui-client]
@@ -163,6 +163,81 @@ class ScalingPage(Page):
             self._show_settings(args[0])
         elif name == "ModeChanged":
             self._show_status(self.guard(self.client.status))
+
+
+CATEGORY_TITLES = {"dock": "Docks", "launcher": "Launchers", "desktop": "Desktop"}
+CATEGORY_ORDER = ("dock", "launcher", "desktop")
+
+
+# [doc:ui-integrations]
+class IntegrationsPage(Page):
+    """One switch per installed integration, grouped by category; rebuilt
+    only when the list or its state changes."""
+
+    key, title_text, icon = "integrations", "Integrations", "application-x-addon-symbolic"
+
+    def __init__(self, client, toast):
+        super().__init__(client, toast)
+        self.groups = []
+        self.items = None
+        self.refresh()
+
+    def refresh(self):
+        settings = self.guard(self.client.settings)
+        if settings is not None:
+            self._show(settings.get("integrations", []))
+
+    def _how_button(self):
+        button = Gtk.Button(label="How to add", valign=Gtk.Align.CENTER, css_classes=["flat"],
+                            tooltip_text=updates.INTEGRATIONS_DOC_URL)
+        button.connect("clicked", lambda _b: self.open_uri(updates.INTEGRATIONS_DOC_URL))
+        return button
+
+    def _show(self, items):
+        items = [dict(item) for item in items]
+        if items == self.items:
+            return
+        self.items = items
+        for group in self.groups:
+            self.remove(group)
+        self.groups = []
+        intro = ("Applied while the device is folded into tablet mode, "
+                 "and undone when you unfold it.")
+        if not items:
+            group = Adw.PreferencesGroup(title="Tablet mode integrations", description=intro)
+            group.add(Adw.ActionRow(
+                title="No integrations installed", use_markup=False,
+                subtitle="Add your own with “How to add”."))
+            group.set_header_suffix(self._how_button())
+            self.groups.append(group)
+        categories = sorted({item["category"] for item in items},
+                            key=lambda c: (CATEGORY_ORDER.index(c) if c in CATEGORY_ORDER else 99, c))
+        for category in categories:
+            group = Adw.PreferencesGroup(title=CATEGORY_TITLES.get(category, category.title()))
+            if not self.groups:
+                group.set_description(intro)
+                group.set_header_suffix(self._how_button())
+            for item in (i for i in items if i["category"] == category):
+                subtitle = item["note"] or item["description"]
+                if item["active"]:
+                    subtitle = f"Active now · {subtitle}"
+                row = Adw.SwitchRow(title=item["title"], subtitle=subtitle, use_markup=False,
+                                    active=item["enabled"],
+                                    sensitive=item["available"] or item["enabled"])
+                row.connect("notify::active", self._on_toggle, item["id"])
+                group.add(row)
+            self.groups.append(group)
+        for group in self.groups:
+            self.add(group)
+
+    def _on_toggle(self, row, _pspec, integration_id):
+        enabled = {item["id"] for item in self.items if item["enabled"]}
+        (enabled.add if row.get_active() else enabled.discard)(integration_id)
+        self.guard(self.client.update, integrations=sorted(enabled))
+
+    def on_signal(self, name, args):
+        if name == "SettingsChanged":
+            self._show(args[0].get("integrations", []))
 
 
 # [doc:ui-sources]
@@ -325,7 +400,7 @@ class AboutPage(Page):
 
 
 # [doc:ui-pages]
-PAGES = (ScalingPage, SourcesPage, AboutPage)  # future settings: add a Page subclass here
+PAGES = (ScalingPage, IntegrationsPage, SourcesPage, AboutPage)  # future settings: add a Page subclass here
 
 
 # [doc:ui-window]

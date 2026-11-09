@@ -13,6 +13,7 @@ REPO = "greedgoddess/kohaku-tabletd"
 REPO_URL = f"https://github.com/{REPO}"
 RELEASES_URL = REPO_URL + "/releases/latest"
 TRIGGERS_DOC_URL = REPO_URL + "/blob/master/docs/TRIGGERS.md"
+INTEGRATIONS_DOC_URL = REPO_URL + "/blob/master/docs/INTEGRATIONS.md"
 API_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 
 
